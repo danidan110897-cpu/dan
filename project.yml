@@ -2,7 +2,7 @@ name: Pulse
 options:
   bundleIdPrefix: com.danielioja
   deploymentTarget:
-    iOS: "18.0"
+    iOS: "17.0"
     watchOS: "10.0"
   createIntermediateGroups: true
 settings:
