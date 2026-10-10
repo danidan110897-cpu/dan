@@ -51,11 +51,11 @@ struct RootView: View {
         Group {
             if onboarded {
                 TabView(selection: $router.tab) {
-                    Tab("Oggi", systemImage: "flame.fill", value: AppTab.today) { HomeView() }
-                    Tab("Allenamenti", systemImage: "dumbbell.fill", value: AppTab.workouts) { RoutinesView() }
-                    Tab("Cibo", systemImage: "fork.knife", value: AppTab.food) { FoodView() }
-                    Tab("Progressi", systemImage: "chart.xyaxis.line", value: AppTab.progress) { ProgressTabView() }
-                    Tab("Corpo", systemImage: "figure.arms.open", value: AppTab.body) { BodyView() }
+                    HomeView().tabItem { Label("Oggi", systemImage: "flame.fill") }.tag(AppTab.today)
+                    RoutinesView().tabItem { Label("Allenamenti", systemImage: "dumbbell.fill") }.tag(AppTab.workouts)
+                    FoodView().tabItem { Label("Cibo", systemImage: "fork.knife") }.tag(AppTab.food)
+                    ProgressTabView().tabItem { Label("Progressi", systemImage: "chart.xyaxis.line") }.tag(AppTab.progress)
+                    BodyView().tabItem { Label("Corpo", systemImage: "figure.arms.open") }.tag(AppTab.body)
                 }
                 .transition(.opacity)
             } else {

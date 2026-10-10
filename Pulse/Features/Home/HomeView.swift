@@ -80,7 +80,7 @@ struct HomeView: View {
             .background(Theme.background.ignoresSafeArea())
             .navigationDestination(item: $active) { session in
                 WorkoutSessionView(session: session)
-                    .navigationTransition(.zoom(sourceID: "workout", in: zoom))
+                    .zoomDestination(id: "workout", in: zoom)
             }
             .startFlow(pending: $pending, active: $active)
             .onAppear { shown = true }
@@ -221,7 +221,7 @@ struct HomeView: View {
                 .background(Theme.accent, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             }
             .buttonStyle(PressableStyle())
-            .matchedTransitionSource(id: "workout", in: zoom)
+            .zoomSource(id: "workout", in: zoom)
             .sensoryFeedback(.impact(weight: .medium), trigger: active)
         } else {
             Button { router.tab = .workouts } label: {
@@ -236,5 +236,19 @@ struct HomeView: View {
             }
             .buttonStyle(PressableStyle())
         }
+    }
+}
+
+
+extension View {
+    /// Zoom transition from a card into the next screen. iOS 18 only; on iOS 17 the normal push is used.
+    @ViewBuilder
+    func zoomSource(id: String, in namespace: Namespace.ID) -> some View {
+        if #available(iOS 18.0, *) { matchedTransitionSource(id: id, in: namespace) } else { self }
+    }
+
+    @ViewBuilder
+    func zoomDestination(id: String, in namespace: Namespace.ID) -> some View {
+        if #available(iOS 18.0, *) { navigationTransition(.zoom(sourceID: id, in: namespace)) } else { self }
     }
 }

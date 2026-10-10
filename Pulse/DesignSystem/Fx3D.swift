@@ -82,7 +82,18 @@ struct MedalView: View {
         TimelineView(.animation) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let spin = (t.truncatingRemainder(dividingBy: 7) / 7) * 2 * .pi
-            MedalScene(angle: Float(spin + extra))
+            if #available(iOS 18.0, *) {
+                MedalScene(angle: Float(spin + extra))
+            } else {
+                // iOS 17 fallback: a flat medal that turns in 3D.
+                ZStack {
+                    Circle().fill(LinearGradient(colors: [Color(red: 1, green: 0.84, blue: 0.3), Color(red: 0.75, green: 0.5, blue: 0.1)], startPoint: .top, endPoint: .bottom))
+                    Circle().fill(Theme.accent).padding(26)
+                    Image(systemName: "checkmark").font(.system(size: 60, weight: .heavy)).foregroundStyle(.black)
+                }
+                .frame(width: 150, height: 150)
+                .rotation3DEffect(.radians(spin + extra), axis: (0, 1, 0), perspective: 0.5)
+            }
         }
         .gesture(
             DragGesture()
@@ -93,6 +104,7 @@ struct MedalView: View {
     }
 }
 
+@available(iOS 18.0, *)
 private struct MedalScene: View {
     let angle: Float
     @State private var root = Entity()
