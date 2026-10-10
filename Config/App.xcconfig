@@ -1,3 +1,4 @@
-// Shared build settings. The Gemini key is NOT stored in git: put it in Config/Secrets.xcconfig (ignored by git).
+// Shared build settings. Secrets and your signing team live in Config/Secrets.xcconfig, which git ignores.
 GEMINI_API_KEY =
+DEVELOPMENT_TEAM =
 #include? "Secrets.xcconfig"

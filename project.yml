@@ -10,7 +10,6 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
     TARGETED_DEVICE_FAMILY: "1"
 targets:
   Pulse:
@@ -50,6 +49,9 @@ targets:
   PulseTests:
     type: bundle.unit-test
     platform: iOS
+    configFiles:
+      Debug: Config/App.xcconfig
+      Release: Config/App.xcconfig
     sources: [PulseTests]
     dependencies:
       - target: Pulse
@@ -60,6 +62,9 @@ targets:
   PulseWidgets:
     type: app-extension
     platform: iOS
+    configFiles:
+      Debug: Config/App.xcconfig
+      Release: Config/App.xcconfig
     sources: [PulseWidgets, SharedLive]
     info:
       path: PulseWidgets/Info.plist
@@ -77,6 +82,9 @@ targets:
   PulseWatch:
     type: application
     platform: watchOS
+    configFiles:
+      Debug: Config/App.xcconfig
+      Release: Config/App.xcconfig
     sources: [PulseWatch, Shared]
     entitlements:
       path: PulseWatch/PulseWatch.entitlements
