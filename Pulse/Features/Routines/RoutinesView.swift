@@ -9,10 +9,29 @@ struct RoutinesView: View {
     @State private var active: WorkoutSession?
     @State private var pending: PendingStart?
     @State private var editing: Routine?
+    @State private var showVoice = false
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Button { showVoice = true } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "mic.fill").font(.title2).foregroundStyle(.black)
+                                .frame(width: 48, height: 48).background(Theme.accent, in: Circle())
+                                .symbolEffect(.pulse)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Dimmi cosa alleni oggi").font(.headline).foregroundStyle(.white)
+                                Text("Parla o scrivi: creo l'allenamento e lo avvio").font(.caption).foregroundStyle(Theme.secondaryText)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").foregroundStyle(Theme.secondaryText)
+                        }
+                    }
+                    .buttonStyle(PressableStyle())
+                }
+                .listRowBackground(Theme.card)
+
                 if !routines.isEmpty {
                     Section {
                         WorkoutHub(routines: routines, logs: logs) { routine, lighter in
@@ -91,6 +110,14 @@ struct RoutinesView: View {
             .navigationDestination(item: $active) { WorkoutSessionView(session: $0) }
         }
         .startFlow(pending: $pending, active: $active)
+        .sheet(isPresented: $showVoice) {
+            VoiceCoachView { routine in
+                Task {
+                    try? await Task.sleep(for: .milliseconds(400))
+                    pending = PendingStart(routine: routine)
+                }
+            }
+        }
         .task(id: routines.count) {
             if trainReminder { await Reminders.scheduleTraining(routines: routines) }
         }

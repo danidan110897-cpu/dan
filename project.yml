@@ -39,6 +39,8 @@ targets:
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Pulse salva in Salute cibo, peso e allenamenti.
         TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: Pulse usa il microfono per capire a voce quale allenamento vuoi fare oggi.
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: Pulse trascrive la tua voce per creare l'allenamento di oggi. Se il telefono lo supporta, avviene sul dispositivo.
         INFOPLIST_KEY_NSFaceIDUsageDescription: Pulse usa Face ID per proteggere i tuoi dati se attivi il blocco.
   PulseTests:
     type: bundle.unit-test
