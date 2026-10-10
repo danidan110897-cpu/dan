@@ -20,6 +20,7 @@ struct AddFoodSheet: View {
     @State private var loading = false
     @State private var message: String?
     @State private var showScanner = false
+    @State private var showPhoto = false
     @State private var selected: FoodResult?
     @State private var searchTask: Task<Void, Never>?
 
@@ -46,12 +47,16 @@ struct AddFoodSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { dismiss() } }
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button("Foto del piatto", systemImage: "camera.viewfinder") { showPhoto = true }
                     Button("Scansiona", systemImage: "barcode.viewfinder") { showScanner = true }
                 }
             }
             .sheet(item: $selected) { food in
                 FoodDetailSheet(food: food, meal: meal, day: day) { dismiss() }
+            }
+            .sheet(isPresented: $showPhoto) {
+                FoodPhotoSheet(meal: meal, day: day) { dismiss() }
             }
             .fullScreenCover(isPresented: $showScanner) {
                 ScannerScreen { code in
