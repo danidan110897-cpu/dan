@@ -52,6 +52,9 @@ struct RoutinesView: View {
                 }
 
                 Section {
+                    NavigationLink { AIRoutineView { editing = $0 } } label: {
+                        Label("Crea con l'AI", systemImage: "sparkles")
+                    }
                     NavigationLink { ExerciseBrowser() } label: {
                         Label("Libreria esercizi", systemImage: "books.vertical")
                     }

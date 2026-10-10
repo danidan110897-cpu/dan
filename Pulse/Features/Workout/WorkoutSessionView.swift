@@ -129,6 +129,9 @@ private struct ExerciseCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(exercise.name).font(.headline)
                     Text(exercise.muscle.label).font(.caption).foregroundStyle(Theme.secondaryText)
+                    if let hint = exercise.hint {
+                        Text(hint).font(.caption).foregroundStyle(Theme.recover).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Spacer()
                 if exercise.superset != 0 {

@@ -20,6 +20,8 @@ struct SessionExercise: Identifiable {
     /// Best weight x reps seen in past sessions. Nil when there is no history, so a first session never counts as a PR.
     var bestVolume: Double?
     var superset: Int
+    /// Why the starting weight was chosen (progressive overload), shown under the exercise name.
+    var hint: String? = nil
 }
 
 /// A workout in progress. Built from a routine plus past history, saved to SwiftData at the end.
@@ -60,18 +62,33 @@ final class WorkoutSession {
         for item in routine.sortedItems {
             guard let ex = item.exercise else { continue }
             let prev = last[ex.key] ?? []
+            let (increment, hint) = overload(prev: prev, targetReps: item.reps, equipment: ex.equipment)
             let sets = (0..<max(item.sets, 1)).map { i -> SessionSet in
                 let ref = i < prev.count ? prev[i] : prev.last
                 return SessionSet(
-                    weight: ref?.weight ?? item.weight,
+                    weight: (ref?.weight ?? item.weight) + increment,
                     reps: ref?.reps ?? item.reps,
                     previous: ref.map { "\(formatWeight($0.weight)) × \($0.reps)" } ?? "—"
                 )
             }
             exercises.append(SessionExercise(key: ex.key, name: ex.name, muscle: ex.muscle, sets: sets,
-                                             bestVolume: best[ex.key], superset: item.supersetGroup))
+                                             bestVolume: best[ex.key], superset: item.supersetGroup, hint: hint))
         }
         return WorkoutSession(title: routine.name, exercises: exercises, restSeconds: routine.restSeconds)
+    }
+
+    /// Double progression: when every set of the last session reached the target reps, add the smallest sensible jump.
+    private static func overload(prev: [LogSet], targetReps: Int, equipment: Equipment) -> (Double, String?) {
+        guard !prev.isEmpty, equipment != .bodyweight, (prev.map(\.weight).max() ?? 0) > 0 else { return (0, nil) }
+        if prev.allSatisfy({ $0.reps >= targetReps }) {
+            let step: Double = switch equipment {
+            case .dumbbell: 2
+            case .kettlebell: 4
+            default: 2.5
+            }
+            return (step, "Hai chiuso tutte le serie a \(targetReps) o più ripetizioni: oggi prova +\(formatWeight(step)) kg.")
+        }
+        return (0, "Tieni lo stesso carico finché non chiudi \(targetReps) ripetizioni in tutte le serie.")
     }
 
     var isResting: Bool { restRemaining > 0 }
