@@ -74,7 +74,7 @@ struct WatchWorkoutView: View {
     private var finished: some View {
         VStack(spacing: 8) {
             Image(systemName: "checkmark.seal.fill").font(.system(size: 44)).foregroundStyle(WatchTheme.accent)
-                .symbolEffect(.bounce)
+                .symbolEffect(.bounce, value: store.doneCount)
             Text("Allenamento finito").font(.headline)
             Button("Salva") { Task { await health.finish() } }.tint(WatchTheme.accent)
         }
