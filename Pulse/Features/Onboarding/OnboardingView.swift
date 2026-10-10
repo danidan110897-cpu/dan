@@ -46,7 +46,7 @@ struct OnboardingView: View {
     @State private var estimateText: String?
     @State private var estimateError: String?
     @State private var confirmSend = false
-    @State private var claudeKey = KeychainStore.get(ClaudeGenerator.keychainAccount) ?? ""
+    @State private var claudeKey = ClaudeClient.savedKey
 
     @State private var outcome: RoutinePlanner.Outcome?
     @State private var planning = false
@@ -82,7 +82,7 @@ struct OnboardingView: View {
             Button("Invia e stima") { estimate() }
             Button("Annulla", role: .cancel) {}
         } message: {
-            Text("La foto viene inviata ad Anthropic con la tua chiave API solo per questa stima. Leggi le loro condizioni sulla privacy prima di procedere.")
+            Text("La foto viene inviata a \(ClaudeClient.providerName) con la tua chiave API solo per questa stima.\(ClaudeClient.privacyNote) Leggi le loro condizioni sulla privacy prima di procedere.")
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { data in savePhoto(data); showCamera = false }.ignoresSafeArea()
@@ -294,13 +294,13 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.borderedProminent).foregroundStyle(.black).disabled(estimating)
             } else {
-                Text("La lettura delle foto richiede per ora la chiave API di Anthropic (facoltativa): l'Apple Intelligence sul telefono, per ora, legge solo testo. Senza chiave useremo le tue misure o il BMI.")
+                Text("La lettura delle foto richiede una chiave API (facoltativa): quella gratuita di Google Gemini va bene, la crei su aistudio.google.com/apikey. Apple Intelligence sul telefono, per ora, legge solo testo. Senza chiave useremo le tue misure o il BMI.")
                     .font(.footnote).foregroundStyle(Theme.secondaryText)
-                SecureField("Chiave API (sk-ant-…)", text: $claudeKey)
+                SecureField("Chiave API (AIza… o sk-ant-…)", text: $claudeKey)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .padding(10).background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-                    .onSubmit { KeychainStore.set(claudeKey, for: ClaudeGenerator.keychainAccount) }
-                Button("Salva chiave") { KeychainStore.set(claudeKey, for: ClaudeGenerator.keychainAccount); estimateError = nil }
+                    .onSubmit { ClaudeClient.saveKey(claudeKey) }
+                Button("Salva chiave") { ClaudeClient.saveKey(claudeKey); estimateError = nil }
                     .buttonStyle(.bordered).disabled(claudeKey.isEmpty)
             }
             if let estimateText {

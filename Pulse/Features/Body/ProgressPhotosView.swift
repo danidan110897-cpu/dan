@@ -95,7 +95,7 @@ private struct PhotoDetail: View {
                 Button("Invia e stima") { runEstimate() }
                 Button("Annulla", role: .cancel) {}
             } message: {
-                Text("La foto viene inviata ad Anthropic con la tua chiave API per essere analizzata. Leggi le loro condizioni sulla privacy prima di procedere.")
+                Text("La foto viene inviata a \(ClaudeClient.providerName) con la tua chiave API per essere analizzata.\(ClaudeClient.privacyNote) Leggi le loro condizioni sulla privacy prima di procedere.")
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { dismiss() } }
@@ -127,7 +127,7 @@ extension PhotoDetail {
             if profile.profile.age < 18 {
                 Text("La stima dalla foto è disponibile solo per maggiorenni.").font(.caption).foregroundStyle(Theme.secondaryText)
             } else if !ClaudeClient.hasKey {
-                Text("Per la stima dalla foto inserisci la chiave API di Anthropic in Impostazioni.")
+                Text("Per la stima dalla foto inserisci una chiave API in Impostazioni (quella gratuita di Google Gemini va bene).")
                     .font(.caption).foregroundStyle(Theme.secondaryText)
             } else {
                 Button { confirmSend = true } label: {

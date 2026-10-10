@@ -6,7 +6,32 @@ import UIKit
 enum ClaudeClient {
     static let model = "claude-opus-5-5"
 
-    static var hasKey: Bool { !(KeychainStore.get(ClaudeGenerator.keychainAccount) ?? "").isEmpty }
+    static var hasAnthropicKey: Bool { !(KeychainStore.get(ClaudeGenerator.keychainAccount) ?? "").isEmpty }
+
+    /// True when any cloud AI key is present: Anthropic (paid) or Google Gemini (free tier).
+    static var hasKey: Bool { hasAnthropicKey || GeminiClient.hasKey }
+
+    /// Who receives the data right now. Anthropic wins when both keys exist.
+    static var providerName: String { hasAnthropicKey ? "Anthropic" : "Google (Gemini)" }
+
+    /// Extra warning shown before sending anything when the free Google tier is in use.
+    static var privacyNote: String {
+        hasAnthropicKey ? "" : " Sul piano gratuito Google può usare i contenuti inviati per migliorare i suoi servizi."
+    }
+
+    /// One field for either key: Google keys start with "AIza", Anthropic keys with "sk-ant".
+    static func saveKey(_ value: String) {
+        let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        KeychainStore.set("", for: ClaudeGenerator.keychainAccount)
+        KeychainStore.set("", for: GeminiClient.keychainAccount)
+        guard !key.isEmpty else { return }
+        KeychainStore.set(key, for: key.hasPrefix("sk-") ? ClaudeGenerator.keychainAccount : GeminiClient.keychainAccount)
+    }
+
+    static var savedKey: String {
+        KeychainStore.get(ClaudeGenerator.keychainAccount).flatMap { $0.isEmpty ? nil : $0 }
+            ?? KeychainStore.get(GeminiClient.keychainAccount) ?? ""
+    }
 
     static func textBlock(_ text: String) -> [String: Any] { ["type": "text", "text": text] }
 
@@ -16,7 +41,8 @@ enum ClaudeClient {
 
     static func json(system: String, content: [[String: Any]], schema: [String: Any], maxTokens: Int = 2048) async throws -> [String: Any] {
         guard let key = KeychainStore.get(ClaudeGenerator.keychainAccount), !key.isEmpty else {
-            throw GeneratorError.unavailable("Inserisci la tua chiave API di Anthropic in Impostazioni.")
+            if GeminiClient.hasKey { return try await GeminiClient.json(system: system, content: content, schema: schema) }
+            throw GeneratorError.unavailable("Inserisci una chiave API in Impostazioni (quella gratuita di Google va bene).")
         }
         let body: [String: Any] = [
             "model": model,

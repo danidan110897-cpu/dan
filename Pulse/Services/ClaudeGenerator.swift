@@ -7,8 +7,8 @@ struct ClaudeGenerator: WorkoutGenerator {
     static let model = "claude-opus-5-5"
 
     func generate(_ request: GenerationRequest, library: [LibraryEntry]) async throws -> GeneratedPlan {
-        guard let key = KeychainStore.get(Self.keychainAccount), !key.isEmpty else {
-            throw GeneratorError.unavailable("Inserisci la tua chiave API di Anthropic in Impostazioni.")
+        guard ClaudeClient.hasKey else {
+            throw GeneratorError.unavailable("Inserisci una chiave API in Impostazioni (quella gratuita di Google va bene).")
         }
         let usable = library.filter { PlanValidator.allowed($0, request) }
 
@@ -46,38 +46,12 @@ struct ClaudeGenerator: WorkoutGenerator {
             ],
         ]
 
-        let body: [String: Any] = [
-            "model": Self.model,
-            "max_tokens": 4096,
-            "system": GeneratorPrompt.system,
-            "output_config": ["effort": "low", "format": ["type": "json_schema", "schema": schema]],
-            "messages": [["role": "user", "content": GeneratorPrompt.user(request, library: usable)]],
-        ]
-
-        var req = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
-        req.httpMethod = "POST"
-        req.timeoutInterval = 120
-        req.setValue(key, forHTTPHeaderField: "x-api-key")
-        req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        req.setValue("application/json", forHTTPHeaderField: "content-type")
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: req)
-        let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else {
-            let message = ((json["error"] as? [String: Any])?["message"] as? String) ?? "Errore \(status)"
-            throw GeneratorError.badResponse("Claude ha risposto: \(message)")
-        }
-        if (json["stop_reason"] as? String) == "refusal" {
-            throw GeneratorError.badResponse("Claude ha rifiutato la richiesta. Riformulala senza dettagli sensibili.")
-        }
-        guard let blocks = json["content"] as? [[String: Any]],
-              let text = blocks.first(where: { ($0["type"] as? String) == "text" })?["text"] as? String,
-              let payload = text.data(using: .utf8),
-              let obj = try? JSONSerialization.jsonObject(with: payload) as? [String: Any] else {
-            throw GeneratorError.badResponse("Risposta di Claude non leggibile.")
-        }
+        let obj = try await ClaudeClient.json(
+            system: GeneratorPrompt.system,
+            content: [ClaudeClient.textBlock(GeneratorPrompt.user(request, library: usable))],
+            schema: schema,
+            maxTokens: 4096
+        )
 
         let routines = (obj["routines"] as? [[String: Any]] ?? []).map { r in
             GeneratedRoutine(

@@ -11,7 +11,7 @@ struct SettingsView: View {
     @AppStorage("appLock") private var appLock = false
     @AppStorage("trainReminder") private var trainReminder = false
     @Query private var allRoutines: [Routine]
-    @State private var claudeKey = KeychainStore.get(ClaudeGenerator.keychainAccount) ?? ""
+    @State private var claudeKey = ClaudeClient.savedKey
     @State private var exportURL: URL?
     @State private var exportError: String?
     @State private var confirmReset = false
@@ -45,13 +45,13 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    SecureField("sk-ant-…", text: $claudeKey)
+                    SecureField("AIza… (Google, gratis) oppure sk-ant-…", text: $claudeKey)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
-                        .onChange(of: claudeKey) { KeychainStore.set(claudeKey, for: ClaudeGenerator.keychainAccount) }
+                        .onChange(of: claudeKey) { ClaudeClient.saveKey(claudeKey) }
                 } header: {
-                    Text("Chiave API Claude (facoltativa)")
+                    Text("Chiave AI per foto e analisi (facoltativa)")
                 } footer: {
-                    Text("Serve solo per creare routine con Claude. Resta nel Keychain di questo iPhone. Senza chiave puoi usare i motori Regole e Apple Intelligence.")
+                    Text("Gratis: crea una chiave Google su aistudio.google.com/apikey (basta l'account Google, niente carta) e incollala qui. Serve per leggere le foto di cibo e corpo. Resta nel Keychain di questo iPhone. Sul piano gratuito Google può usare i contenuti inviati per migliorare i suoi servizi: le foto del corpo non vengono mai inviate senza una tua conferma.")
                 }
 
                 Section {

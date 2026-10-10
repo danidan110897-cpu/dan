@@ -19,13 +19,48 @@ enum RoutinePlanner {
             }
         }
         do {
-            let raw = try await make(choice).generate(request, library: library)
+            let generator = make(choice)
+            // An engine that never answers must not freeze the screen: give up and fall back to the rules.
+            let raw = try await withTimeout(choice == .apple ? 30 : 90) { try await generator.generate(request, library: library) }
             return Outcome(plan: PlanValidator.validate(raw, request: request, library: library), used: choice, fallbackReason: nil)
         } catch {
             guard allowFallback, choice != .local else { throw error }
             let raw = try await RuleBasedGenerator().generate(request, library: library)
             return Outcome(plan: PlanValidator.validate(raw, request: request, library: library), used: .local,
                            fallbackReason: error.localizedDescription)
+        }
+    }
+
+    private final class Once: @unchecked Sendable {
+        private let lock = NSLock()
+        private var done = false
+        func take() -> Bool {
+            lock.lock(); defer { lock.unlock() }
+            if done { return false }
+            done = true
+            return true
+        }
+    }
+
+    /// Returns the first of: the operation's result, or a timeout error. Does not wait for an operation that ignores cancellation.
+    static func withTimeout<T: Sendable>(_ seconds: Double, _ operation: @escaping @Sendable () async throws -> T) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            let once = Once()
+            let work = Task {
+                do {
+                    let value = try await operation()
+                    if once.take() { continuation.resume(returning: value) }
+                } catch {
+                    if once.take() { continuation.resume(throwing: error) }
+                }
+            }
+            Task {
+                try? await Task.sleep(for: .seconds(seconds))
+                if once.take() {
+                    work.cancel()
+                    continuation.resume(throwing: GeneratorError.unavailable("L'AI ci ha messo troppo tempo a rispondere."))
+                }
+            }
         }
     }
 

@@ -46,8 +46,8 @@ struct WeeklyReportView: View {
             Button("Annulla", role: .cancel) {}
         } message: {
             Text(includePhotos
-                 ? "I numeri della settimana e due tue foto vengono inviati ad Anthropic con la tua chiave API. Leggi le loro condizioni sulla privacy prima di procedere."
-                 : "I numeri della settimana vengono inviati ad Anthropic con la tua chiave API. Nessuna foto.")
+                 ? "I numeri della settimana e due tue foto vengono inviati a \(ClaudeClient.providerName) con la tua chiave API.\(ClaudeClient.privacyNote) Leggi le loro condizioni sulla privacy prima di procedere."
+                 : "I numeri della settimana vengono inviati a \(ClaudeClient.providerName) con la tua chiave API. Nessuna foto.")
         }
     }
 

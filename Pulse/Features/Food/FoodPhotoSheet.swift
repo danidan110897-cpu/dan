@@ -24,7 +24,7 @@ struct FoodPhotoSheet: View {
 
     enum Method: String, CaseIterable, Identifiable {
         case onDevice = "Sul telefono (gratis)"
-        case claude = "Claude (più preciso)"
+        case claude = "AI cloud (più preciso)"
         var id: String { rawValue }
     }
 
@@ -54,7 +54,7 @@ struct FoodPhotoSheet: View {
                     }
                     Label(method == .onDevice
                           ? "La foto resta sul telefono. \(AIEngine.appleStatus.isAvailable ? "Uso Apple Intelligence." : "Apple Intelligence non disponibile: riconoscimento di base.")"
-                          : "La foto viene inviata ad Anthropic con la tua chiave: stima più precisa di cibi e porzioni.",
+                          : "La foto viene inviata a \(ClaudeClient.providerName) con la tua chiave: stima più precisa di cibi e porzioni.",
                           systemImage: method == .onDevice ? "lock.shield" : "paperplane")
                         .font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
@@ -168,7 +168,7 @@ struct FoodPhotoSheet: View {
                 Button("Invia e analizza") { analyze() }
                 Button("Annulla", role: .cancel) {}
             } message: {
-                Text("La foto del piatto viene inviata ad Anthropic con la tua chiave API. Leggi le loro condizioni sulla privacy prima di procedere.")
+                Text("La foto del piatto viene inviata a \(ClaudeClient.providerName) con la tua chiave API.\(ClaudeClient.privacyNote) Leggi le loro condizioni sulla privacy prima di procedere.")
             }
         }
     }

@@ -134,7 +134,7 @@ struct AIRoutineView: View {
         case .apple: AIEngine.appleStatus.isAvailable
             ? "Gira sul telefono: gratis e privato."
             : "Non disponibile: \(AIEngine.appleStatus.label)."
-        case .claude: "Usa la tua chiave API di Anthropic (Impostazioni). Costa pochi centesimi a bozza."
+        case .claude: "Usa la tua chiave API (Impostazioni): quella gratuita di Google Gemini va bene, Anthropic costa pochi centesimi a bozza."
         }
     }
 
