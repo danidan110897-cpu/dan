@@ -50,7 +50,31 @@ final class WorkoutSession {
         exercises.flatMap(\.sets).filter(\.isDone).reduce(0) { $0 + $1.weight * Double($1.reps) }
     }
 
+    /// Called after any change so the Watch link can push a fresh snapshot.
+    var onUpdate: (() -> Void)?
+
+    var snapshot: WorkoutSnapshot {
+        WorkoutSnapshot(
+            title: "Push",
+            restSeconds: restTotal,
+            exercises: exercises.map { ex in
+                .init(id: ex.id, name: ex.name, sets: ex.sets.map {
+                    .init(id: $0.id, weight: $0.weight, reps: $0.reps, isDone: $0.isDone)
+                })
+            }
+        )
+    }
+
+    /// Applies a set toggle coming from the Watch; ignored if already in that state.
+    func apply(_ toggle: SetToggle) {
+        guard let e = exercises.firstIndex(where: { $0.id == toggle.exerciseID }),
+              let s = exercises[e].sets.firstIndex(where: { $0.id == toggle.setID }),
+              exercises[e].sets[s].isDone != toggle.isDone else { return }
+        withAnimation(Motion.snappy) { self.toggle(exercise: e, set: s) }
+    }
+
     func toggle(exercise e: Int, set s: Int) {
+        defer { onUpdate?() }
         var set = exercises[e].sets[s]
         set.isDone.toggle()
         if set.isDone {

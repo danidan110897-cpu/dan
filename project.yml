@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.dan
   deploymentTarget:
     iOS: "18.0"
+    watchOS: "11.0"
   createIntermediateGroups: true
 settings:
   base:
@@ -14,7 +15,10 @@ targets:
   Pulse:
     type: application
     platform: iOS
-    sources: [Pulse]
+    sources: [Pulse, Shared]
+    dependencies:
+      - target: PulseWatch
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dan.pulse
@@ -23,3 +27,20 @@ targets:
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_CFBundleDisplayName: Pulse
+  PulseWatch:
+    type: application
+    platform: watchOS
+    sources: [PulseWatch, Shared]
+    entitlements:
+      path: PulseWatch/PulseWatch.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dan.pulse.watchkitapp
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Pulse
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.dan.pulse
+        INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
+        INFOPLIST_KEY_NSHealthShareUsageDescription: Pulse legge battito e calorie per mostrarli durante l'allenamento.
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: Pulse salva i tuoi allenamenti in Salute.

@@ -36,6 +36,13 @@ struct WorkoutSessionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sensoryFeedback(.success, trigger: session.prTrigger)
         .sensoryFeedback(.impact(flexibility: .soft), trigger: session.completedSets)
+        .onAppear {
+            let link = Connectivity.shared
+            session.onUpdate = { link.send(snapshot: session.snapshot) }
+            link.onToggle = { session.apply($0) }
+            link.activate()
+            link.send(snapshot: session.snapshot)
+        }
         .onChange(of: session.prTrigger) {
             showConfetti = false
             Task {
