@@ -71,6 +71,8 @@ final class Routine {
     var name: String
     var createdAt: Date
     var restSeconds: Int
+    /// Weekdays this routine is scheduled on (Calendar numbering: 1 = Sunday ... 7 = Saturday).
+    var weekdays: [Int] = []
     @Relationship(deleteRule: .cascade) var items: [RoutineItem] = []
 
     init(name: String, restSeconds: Int = 90) {

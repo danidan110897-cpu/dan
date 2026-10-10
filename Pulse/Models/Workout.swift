@@ -46,7 +46,7 @@ final class WorkoutSession {
         self.restTotal = restSeconds
     }
 
-    static func make(from routine: Routine, context: ModelContext) -> WorkoutSession {
+    static func make(from routine: Routine, context: ModelContext, lighter: Bool = false) -> WorkoutSession {
         let logs = (try? context.fetch(FetchDescriptor<WorkoutLog>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
         var last: [String: [LogSet]] = [:]
         var best: [String: Double] = [:]
@@ -63,8 +63,12 @@ final class WorkoutSession {
         for item in routine.sortedItems {
             guard let ex = item.exercise else { continue }
             let prev = last[ex.key] ?? []
-            let (increment, hint) = overload(prev: prev, targetReps: item.reps, equipment: ex.equipment)
-            let sets = (0..<max(item.sets, 1)).map { i -> SessionSet in
+            var (increment, hint) = overload(prev: prev, targetReps: item.reps, equipment: ex.equipment)
+            if lighter {
+                increment = 0
+                hint = "Versione leggera: una serie in meno e nessun aumento di carico."
+            }
+            let sets = (0..<max(item.sets - (lighter ? 1 : 0), 1)).map { i -> SessionSet in
                 let ref = i < prev.count ? prev[i] : prev.last
                 return SessionSet(
                     weight: (ref?.weight ?? item.weight) + increment,

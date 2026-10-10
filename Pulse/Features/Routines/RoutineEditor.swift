@@ -15,6 +15,15 @@ struct RoutineEditor: View {
             .listRowBackground(Theme.card)
 
             Section {
+                weekdayChips
+            } header: {
+                Text("Giorni della settimana")
+            } footer: {
+                Text("Nei giorni scelti la routine compare in automatico in Allenamenti e puoi ricevere il promemoria.")
+            }
+            .listRowBackground(Theme.card)
+
+            Section {
                 ForEach(routine.sortedItems) { item in
                     ItemRow(item: item, canLinkToPrevious: canLink(item)) { toggleSuperset(item) }
                 }
@@ -41,6 +50,30 @@ struct RoutineEditor: View {
                 ExerciseBrowser(onPick: add)
             }
         }
+    }
+
+    private var weekdayChips: some View {
+        let order = [2, 3, 4, 5, 6, 7, 1]   // Monday first
+        let letters = ["L", "M", "M", "G", "V", "S", "D"]
+        return HStack(spacing: 6) {
+            ForEach(Array(order.enumerated()), id: \.offset) { i, weekday in
+                let on = routine.weekdays.contains(weekday)
+                Button {
+                    withAnimation(Motion.snappy) {
+                        if on { routine.weekdays.removeAll { $0 == weekday } } else { routine.weekdays.append(weekday) }
+                    }
+                } label: {
+                    Text(letters[i]).font(.subheadline.weight(.bold))
+                        .frame(maxWidth: .infinity).frame(height: 38)
+                        .background(on ? Theme.accent : Color.white.opacity(0.08), in: Circle())
+                        .foregroundStyle(on ? .black : .white)
+                }
+                .buttonStyle(PressableStyle())
+                .accessibilityLabel(Calendar.current.weekdaySymbols[weekday - 1])
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .sensoryFeedback(.selection, trigger: routine.weekdays)
     }
 
     private func add(_ exercises: [Exercise]) {

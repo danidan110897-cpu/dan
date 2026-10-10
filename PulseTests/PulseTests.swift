@@ -204,3 +204,17 @@ struct CalorieGoalTests {
         #expect(abs(BodyAnalysis(p: lean).weeklyRateKg) < abs(BodyAnalysis(p: heavy).weeklyRateKg))
     }
 }
+
+struct ScheduleTests {
+    @Test func defaultWeekdaysSpreadRestDays() {
+        #expect(TrainingSchedule.defaultWeekdays(count: 3) == [2, 4, 6])
+        #expect(TrainingSchedule.defaultWeekdays(count: 1).count == 1)
+        #expect(TrainingSchedule.defaultWeekdays(count: 6).count == 6)
+    }
+
+    @Test func weekStartsOnMondayAndHasSevenDays() {
+        let week = TrainingSchedule.week(containing: .now)
+        #expect(week.count == 7)
+        #expect(TrainingSchedule.calendar.component(.weekday, from: week[0]) == 2)
+    }
+}

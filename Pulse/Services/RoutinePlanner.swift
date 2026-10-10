@@ -34,8 +34,10 @@ enum RoutinePlanner {
     @discardableResult
     static func save(_ plan: GeneratedPlan, restSeconds: Int, exercises: [Exercise], context: ModelContext) -> Routine? {
         var first: Routine?
-        for r in plan.routines {
+        let days = TrainingSchedule.defaultWeekdays(count: plan.routines.count)
+        for (index, r) in plan.routines.enumerated() {
             let routine = Routine(name: r.name, restSeconds: restSeconds)
+            if index < days.count { routine.weekdays = [days[index]] }
             context.insert(routine)
             for (i, g) in r.exercises.enumerated() {
                 guard let ex = exercises.first(where: { $0.key == g.key }) else { continue }

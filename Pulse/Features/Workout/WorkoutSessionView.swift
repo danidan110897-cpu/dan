@@ -5,6 +5,7 @@ struct WorkoutSessionView: View {
     @State private var session: WorkoutSession
     @State private var showConfetti = false
     @State private var showFinish = false
+    @State private var summary: WorkoutSummary?
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
@@ -68,6 +69,9 @@ struct WorkoutSessionView: View {
         } message: {
             Text("Vengono salvate solo le serie completate.")
         }
+        .fullScreenCover(item: $summary) { s in
+            WorkoutSummaryView(summary: s) { summary = nil; dismiss() }
+        }
         .sensoryFeedback(.success, trigger: session.prTrigger)
         .sensoryFeedback(.impact(flexibility: .soft), trigger: session.completedSets)
         .onAppear {
@@ -89,12 +93,19 @@ struct WorkoutSessionView: View {
     }
 
     private func finish(save: Bool) {
-        if save { session.save(to: context) }
+        let stats = WorkoutSummary(
+            name: session.title,
+            duration: Int(Date().timeIntervalSince(session.startedAt)),
+            volume: session.totalVolume,
+            sets: session.completedSets,
+            records: session.exercises.filter { $0.sets.contains { $0.isPR } }.map(\.name)
+        )
+        let saved = save && session.save(to: context)
         session.skipRest()
         session.onUpdate = nil
         // An empty snapshot tells the Watch the workout is over.
         Connectivity.shared.send(snapshot: WorkoutSnapshot(title: "", restSeconds: 0, exercises: []))
-        dismiss()
+        if saved { summary = stats } else { dismiss() }
     }
 
     private var summary: some View {

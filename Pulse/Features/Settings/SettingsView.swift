@@ -9,6 +9,8 @@ struct SettingsView: View {
     @AppStorage("playlistURL") private var playlistURL = ""
     @AppStorage("photoReminder") private var photoReminder = false
     @AppStorage("appLock") private var appLock = false
+    @AppStorage("trainReminder") private var trainReminder = false
+    @Query private var allRoutines: [Routine]
     @State private var claudeKey = KeychainStore.get(ClaudeGenerator.keychainAccount) ?? ""
     @State private var exportURL: URL?
     @State private var exportError: String?
@@ -71,6 +73,10 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Promemoria allenamento (18:00 nei giorni in programma)", isOn: $trainReminder)
+                        .onChange(of: trainReminder) { _, on in
+                            if on { Task { await Reminders.scheduleTraining(routines: allRoutines) } } else { Reminders.cancelTraining() }
+                        }
                     Toggle("Promemoria foto e riepilogo (domenica 10:00)", isOn: $photoReminder)
                         .onChange(of: photoReminder) { _, on in
                             Task { if await Reminders.setWeeklyPhoto(enabled: on) == false { photoReminder = false } }

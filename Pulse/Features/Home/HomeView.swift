@@ -11,6 +11,7 @@ struct HomeView: View {
     @State private var shown = false
     @State private var showSettings = false
     @State private var active: WorkoutSession?
+    @State private var pending: PendingStart?
     @Namespace private var zoom
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -49,9 +50,14 @@ struct HomeView: View {
         return count
     }
 
-    /// The routine done least recently (or never) is next.
+    /// Today's scheduled routine if there is one still to do; otherwise the one done least recently.
     private var nextRoutine: Routine? {
-        routines.filter { !$0.items.isEmpty }.min { a, b in
+        let cal = Calendar.current
+        if let today = TrainingSchedule.routines(on: .now, from: routines)
+            .first(where: { r in !logs.contains { $0.name == r.name && cal.isDateInToday($0.date) } }) {
+            return today
+        }
+        return routines.filter { !$0.items.isEmpty }.min { a, b in
             let da = logs.first { $0.name == a.name }?.date ?? .distantPast
             let db = logs.first { $0.name == b.name }?.date ?? .distantPast
             return da < db
@@ -76,6 +82,7 @@ struct HomeView: View {
                 WorkoutSessionView(session: session)
                     .navigationTransition(.zoom(sourceID: "workout", in: zoom))
             }
+            .startFlow(pending: $pending, active: $active)
             .onAppear { shown = true }
             .task { await health.requestAndRefresh() }
             .toolbar {
@@ -195,7 +202,7 @@ struct HomeView: View {
     private var workoutCard: some View {
         if let routine = nextRoutine {
             Button {
-                active = WorkoutSession.make(from: routine, context: context)
+                pending = PendingStart(routine: routine)
             } label: {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("PROSSIMO ALLENAMENTO").font(.caption.weight(.semibold)).foregroundStyle(.black.opacity(0.6))
