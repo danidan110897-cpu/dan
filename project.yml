@@ -37,6 +37,7 @@ targets:
         INFOPLIST_KEY_NSCameraUsageDescription: Pulse usa la fotocamera per leggere i codici a barre dei prodotti.
         INFOPLIST_KEY_NSHealthShareUsageDescription: Pulse legge passi, sonno, HRV e battito per calcolare il tuo recupero.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Pulse salva in Salute cibo, peso e allenamenti.
+        TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
         INFOPLIST_KEY_NSFaceIDUsageDescription: Pulse usa Face ID per proteggere i tuoi dati se attivi il blocco.
   PulseTests:
@@ -64,6 +65,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.danielioja.pulse.widgets
+        TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
   PulseWatch:
     type: application

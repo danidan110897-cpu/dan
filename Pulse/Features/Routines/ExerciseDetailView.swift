@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 /// Photos of the start and end position (alternating), step-by-step execution and common mistakes.
 struct ExerciseDetailView: View {
