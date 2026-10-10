@@ -95,6 +95,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.danielioja.pulse.watchkitapp
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Pulse
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.danielioja.pulse
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
         INFOPLIST_KEY_NSHealthShareUsageDescription: Pulse legge battito e calorie per mostrarli durante l'allenamento.
