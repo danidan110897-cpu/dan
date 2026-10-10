@@ -26,7 +26,7 @@ struct PulseApp: App {
         .modelContainer(for: [
             Exercise.self, Routine.self, RoutineItem.self,
             WorkoutLog.self, LogEntry.self, LogSet.self,
-            FoodItem.self, FoodEntry.self,
+            FoodItem.self, FoodEntry.self, ProgressPhoto.self,
         ])
     }
 }

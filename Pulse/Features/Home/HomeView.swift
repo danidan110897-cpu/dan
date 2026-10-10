@@ -7,6 +7,7 @@ struct HomeView: View {
     @Query(sort: \WorkoutLog.date, order: .reverse) private var logs: [WorkoutLog]
     @Query(sort: \Routine.createdAt) private var routines: [Routine]
 
+    private let health = HealthStore.shared
     @State private var shown = false
     @State private var active: WorkoutSession?
     @Namespace private var zoom
@@ -62,8 +63,9 @@ struct HomeView: View {
                 VStack(spacing: 16) {
                     header.entrance(0, shown: shown, reduceMotion: reduceMotion)
                     ringsCard.entrance(1, shown: shown, reduceMotion: reduceMotion)
-                    streakCard.entrance(2, shown: shown, reduceMotion: reduceMotion)
-                    workoutCard.entrance(3, shown: shown, reduceMotion: reduceMotion)
+                    readinessCard.entrance(2, shown: shown, reduceMotion: reduceMotion)
+                    streakCard.entrance(3, shown: shown, reduceMotion: reduceMotion)
+                    workoutCard.entrance(4, shown: shown, reduceMotion: reduceMotion)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 32)
@@ -74,6 +76,7 @@ struct HomeView: View {
                     .navigationTransition(.zoom(sourceID: "workout", in: zoom))
             }
             .onAppear { shown = true }
+            .task { await health.requestAndRefresh() }
         }
     }
 
@@ -90,21 +93,53 @@ struct HomeView: View {
     private var ringsCard: some View {
         HStack(spacing: 20) {
             ZStack {
-                ProgressRing(progress: Double(todayMinutes) / 45, color: Theme.train, lineWidth: 16)
-                ProgressRing(progress: Double(thisWeekLogs.count) / 3, color: Theme.move, lineWidth: 16, delay: 0.15)
-                    .padding(22)
+                ProgressRing(progress: health.activeKcal / 500, color: Theme.move, lineWidth: 14)
+                ProgressRing(progress: Double(todayMinutes) / 45, color: Theme.train, lineWidth: 14, delay: 0.15)
+                    .padding(18)
+                ProgressRing(progress: Double(health.readiness?.score ?? 0) / 100, color: Theme.recover, lineWidth: 14, delay: 0.3)
+                    .padding(36)
             }
-            .frame(width: 130, height: 130)
+            .frame(width: 140, height: 140)
             .animation(Motion.smooth, value: logs.count)
+            .animation(Motion.smooth, value: health.activeKcal)
 
-            VStack(alignment: .leading, spacing: 14) {
-                stat("Oggi", "\(todayMinutes) / 45 min", Theme.train)
-                stat("Settimana", "\(thisWeekLogs.count) / 3 allenamenti", Theme.move)
+            VStack(alignment: .leading, spacing: 12) {
+                stat("Movimento", "\(Int(health.activeKcal)) / 500 kcal", Theme.move)
+                stat("Allenamento", "\(todayMinutes) / 45 min", Theme.train)
+                stat("Recupero", health.readiness.map { "\($0.score)%" } ?? "--", Theme.recover)
             }
             Spacer(minLength: 0)
         }
         .padding(20)
         .card()
+    }
+
+    @ViewBuilder
+    private var readinessCard: some View {
+        if let r = health.readiness {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "bolt.heart.fill").foregroundStyle(Theme.recover)
+                    Text(r.label).font(.headline)
+                    Spacer()
+                    Text("\(r.score)").font(.system(.title2, design: .rounded, weight: .bold)).foregroundStyle(Theme.recover)
+                        .contentTransition(.numericText())
+                }
+                Text(r.advice).font(.subheadline)
+                Text(r.reasons.joined(separator: " · ")).font(.caption).foregroundStyle(Theme.secondaryText)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
+        } else if health.didRefresh {
+            HStack(spacing: 12) {
+                Image(systemName: "heart.text.square").font(.title2).foregroundStyle(Theme.recover)
+                Text("Per vedere il recupero servono sonno e HRV in Salute (li registra l'Apple Watch). Controlla i permessi in Impostazioni → Salute.")
+                    .font(.footnote).foregroundStyle(Theme.secondaryText)
+            }
+            .padding(16)
+            .card()
+        }
     }
 
     private func stat(_ title: String, _ value: String, _ color: Color) -> some View {

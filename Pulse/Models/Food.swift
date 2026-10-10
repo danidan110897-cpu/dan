@@ -66,6 +66,8 @@ final class FoodEntry {
     var carbs: Double
     var fat: Double
     var itemKey: String
+    /// Links this entry to the samples written to Apple Health so they can be removed together.
+    var uid: String = UUID().uuidString
 
     init(date: Date, meal: Meal, name: String, grams: Double, kcal: Double, protein: Double, carbs: Double, fat: Double, itemKey: String) {
         self.date = date
@@ -135,7 +137,21 @@ enum FoodLogger {
                               kcal: v.kcal, protein: v.protein, carbs: v.carbs, fat: v.fat, itemKey: food.key)
         context.insert(entry)
         try? context.save()
+        pushToHealth(entry)
         return entry
+    }
+
+    @MainActor
+    static func pushToHealth(_ e: FoodEntry) {
+        let (id, date, kcal, p, c, f) = (e.uid, e.date, e.kcal, e.protein, e.carbs, e.fat)
+        Task { await HealthStore.shared.saveNutrition(entryID: id, date: date, kcal: kcal, protein: p, carbs: c, fat: f) }
+    }
+
+    @MainActor
+    static func remove(_ e: FoodEntry, context: ModelContext) {
+        let id = e.uid
+        context.delete(e)
+        Task { await HealthStore.shared.deleteNutrition(entryID: id) }
     }
 
     @MainActor

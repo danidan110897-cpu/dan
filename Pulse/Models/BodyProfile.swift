@@ -87,6 +87,7 @@ struct WeightEntry: Codable, Identifiable, Equatable {
     var id = UUID()
     var date: Date
     var kg: Double
+    var waistCm: Double? = nil
 }
 
 /// Pure calculations from a profile. All values are estimates, not medical advice.
@@ -181,9 +182,10 @@ final class ProfileStore {
     /// One entry per day: logging again the same day replaces it.
     func logWeight(_ kg: Double, on date: Date = .now) {
         weights.removeAll { Calendar.current.isDate($0.date, inSameDayAs: date) }
-        weights.append(WeightEntry(date: date, kg: kg))
+        weights.append(WeightEntry(date: date, kg: kg, waistCm: profile.waistCm))
         weights.sort { $0.date < $1.date }
         profile.weightKg = kg
+        Task { await HealthStore.shared.saveWeight(kg, date: date) }
     }
 
     private struct Saved: Codable {

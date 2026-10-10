@@ -149,23 +149,36 @@ final class WorkoutSession {
         restTask?.cancel()
         restTotal = seconds
         restRemaining = seconds
+        updateActivity()
         restTask = Task { [weak self] in
             while let self, self.restRemaining > 0 {
                 try? await Task.sleep(for: .seconds(1))
                 if Task.isCancelled { return }
                 self.restRemaining -= 1
             }
+            LiveActivityManager.shared.end()
         }
     }
 
     func adjustRest(by delta: Int) {
         restRemaining = max(0, restRemaining + delta)
         restTotal = max(restTotal, restRemaining)
+        if restRemaining > 0 { updateActivity() } else { LiveActivityManager.shared.end() }
     }
 
     func skipRest() {
         restTask?.cancel()
         restRemaining = 0
+        LiveActivityManager.shared.end()
+    }
+
+    private func updateActivity() {
+        LiveActivityManager.shared.startOrUpdate(
+            workout: title,
+            endDate: Date().addingTimeInterval(TimeInterval(restRemaining)),
+            done: completedSets,
+            total: totalSets
+        )
     }
 
     /// Saves completed sets as a WorkoutLog. Returns false when nothing was completed.
@@ -187,6 +200,11 @@ final class WorkoutSession {
         context.insert(log)
         log.entries = entries
         try? context.save()
+        // With a paired Watch the Watch records the workout (with heart rate); otherwise write it from the phone.
+        if !Connectivity.shared.hasWatch {
+            let (start, end) = (startedAt, Date())
+            Task { await HealthStore.shared.saveWorkout(start: start, end: end) }
+        }
         return true
     }
 }

@@ -16,6 +16,18 @@ struct BodyView: View {
                     caloriesCard(a).entrance(1, shown: shown, reduceMotion: reduceMotion)
                     macrosCard(a).entrance(2, shown: shown, reduceMotion: reduceMotion)
                     weightCard(a).entrance(3, shown: shown, reduceMotion: reduceMotion)
+                    waistCard.entrance(4, shown: shown, reduceMotion: reduceMotion)
+                    NavigationLink { ProgressPhotosView() } label: {
+                        HStack {
+                            Label("Foto progressi", systemImage: "photo.on.rectangle.angled").font(.headline)
+                            Spacer()
+                            Image(systemName: "chevron.right").foregroundStyle(Theme.secondaryText)
+                        }
+                        .padding(20)
+                        .card()
+                    }
+                    .buttonStyle(PressableStyle())
+                    .entrance(5, shown: shown, reduceMotion: reduceMotion)
                     Text("Sono stime, non consigli medici. In caso di dubbi parla con un medico.")
                         .font(.caption).foregroundStyle(Theme.secondaryText).multilineTextAlignment(.center)
                         .padding(.horizontal)
@@ -124,6 +136,25 @@ struct BodyView: View {
                 }
             }
             .frame(height: 8)
+        }
+    }
+
+    @ViewBuilder
+    private var waistCard: some View {
+        let points = store.weights.filter { $0.waistCm != nil }
+        if points.count >= 2 {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("VITA (cm)").font(.caption.weight(.semibold)).foregroundStyle(Theme.secondaryText)
+                Chart(points) { w in
+                    LineMark(x: .value("Data", w.date), y: .value("cm", w.waistCm ?? 0))
+                        .foregroundStyle(Theme.recover).interpolationMethod(.catmullRom)
+                    PointMark(x: .value("Data", w.date), y: .value("cm", w.waistCm ?? 0)).foregroundStyle(Theme.recover)
+                }
+                .chartYScale(domain: .automatic(includesZero: false))
+                .frame(height: 140)
+            }
+            .padding(20)
+            .card()
         }
     }
 

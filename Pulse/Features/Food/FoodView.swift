@@ -162,7 +162,7 @@ private struct FoodDayView: View {
                     .buttonStyle(.plain)
                     Spacer()
                     Text("\(Int(entry.kcal))").font(.subheadline.weight(.semibold))
-                    Button { withAnimation(Motion.snappy) { context.delete(entry) } } label: {
+                    Button { withAnimation(Motion.snappy) { FoodLogger.remove(entry, context: context) } } label: {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.secondaryText)
                     }
                     .buttonStyle(.plain)
@@ -186,8 +186,10 @@ private struct FoodDayView: View {
         let old = (try? context.fetch(d)) ?? []
         let when = cal.isDateInToday(day) ? Date() : (cal.date(bySettingHour: 12, minute: 0, second: 0, of: day) ?? day)
         for e in old {
-            context.insert(FoodEntry(date: when, meal: meal, name: e.name, grams: e.grams, kcal: e.kcal,
-                                     protein: e.protein, carbs: e.carbs, fat: e.fat, itemKey: e.itemKey))
+            let copy = FoodEntry(date: when, meal: meal, name: e.name, grams: e.grams, kcal: e.kcal,
+                                 protein: e.protein, carbs: e.carbs, fat: e.fat, itemKey: e.itemKey)
+            context.insert(copy)
+            FoodLogger.pushToHealth(copy)
         }
         try? context.save()
     }
@@ -230,6 +232,12 @@ private struct EntryEditor: View {
                         entry.carbs *= f
                         entry.fat *= f
                         entry.grams = grams
+                        let id = entry.uid
+                        let (date, k, p, c, f) = (entry.date, entry.kcal, entry.protein, entry.carbs, entry.fat)
+                        Task {
+                            await HealthStore.shared.deleteNutrition(entryID: id)
+                            await HealthStore.shared.saveNutrition(entryID: id, date: date, kcal: k, protein: p, carbs: c, fat: f)
+                        }
                         dismiss()
                     }
                 }

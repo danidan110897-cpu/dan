@@ -13,6 +13,12 @@ final class Connectivity: NSObject, WCSessionDelegate, @unchecked Sendable {
 
     private override init() { super.init() }
 
+    #if os(iOS)
+    var hasWatch: Bool {
+        WCSession.isSupported() && WCSession.default.isPaired && WCSession.default.isWatchAppInstalled
+    }
+    #endif
+
     func activate() {
         guard WCSession.isSupported() else { return }
         WCSession.default.delegate = self

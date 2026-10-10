@@ -15,9 +15,15 @@ targets:
   Pulse:
     type: application
     platform: iOS
-    sources: [Pulse, Shared]
+    sources: [Pulse, Shared, SharedLive]
+    entitlements:
+      path: Pulse/Pulse.entitlements
+      properties:
+        com.apple.developer.healthkit: true
     dependencies:
       - target: PulseWatch
+        embed: true
+      - target: PulseWidgets
         embed: true
     settings:
       base:
@@ -28,6 +34,23 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_CFBundleDisplayName: Pulse
         INFOPLIST_KEY_NSCameraUsageDescription: Pulse usa la fotocamera per leggere i codici a barre dei prodotti.
+        INFOPLIST_KEY_NSHealthShareUsageDescription: Pulse legge passi, sonno, HRV e battito per calcolare il tuo recupero.
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: Pulse salva in Salute cibo, peso e allenamenti.
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
+  PulseWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [PulseWidgets, SharedLive]
+    info:
+      path: PulseWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Pulse Widgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dan.pulse.widgets
+        SKIP_INSTALL: YES
   PulseWatch:
     type: application
     platform: watchOS
