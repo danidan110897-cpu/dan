@@ -72,6 +72,11 @@ private struct PhotoDetail: View {
     let photo: ProgressPhoto
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(ProfileStore.self) private var profile
+    @State private var analyzing = false
+    @State private var error: String?
+    @State private var notes: [String] = []
+    @State private var confirmSend = false
 
     var body: some View {
         NavigationStack {
@@ -83,8 +88,15 @@ private struct PhotoDetail: View {
                     Text("\(photo.date.formatted(date: .long, time: .omitted)) · \(formatWeight(w)) kg")
                         .font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
+                estimateSection
             }
             .padding()
+            .confirmationDialog("Inviare la foto per la stima?", isPresented: $confirmSend, titleVisibility: .visible) {
+                Button("Invia e stima") { runEstimate() }
+                Button("Annulla", role: .cancel) {}
+            } message: {
+                Text("La foto viene inviata ad Anthropic con la tua chiave API per essere analizzata. Leggi le loro condizioni sulla privacy prima di procedere.")
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { dismiss() } }
                 ToolbarItem(placement: .destructiveAction) {
@@ -95,6 +107,58 @@ private struct PhotoDetail: View {
                     }
                 }
             }
+        }
+    }
+}
+
+extension PhotoDetail {
+    @ViewBuilder
+    fileprivate var estimateSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let low = photo.estimateLow, let high = photo.estimateHigh {
+                Label("Stima AI: \(Int(low.rounded()))–\(Int(high.rounded()))% di grasso corporeo", systemImage: "sparkles")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent)
+                if let c = photo.estimateConfidence {
+                    Text("Affidabilità: \(c == "high" ? "alta" : c == "medium" ? "media" : "bassa")")
+                        .font(.caption).foregroundStyle(Theme.secondaryText)
+                }
+                ForEach(notes, id: \.self) { Text($0).font(.caption).foregroundStyle(Theme.secondaryText) }
+            }
+            if profile.profile.age < 18 {
+                Text("La stima dalla foto è disponibile solo per maggiorenni.").font(.caption).foregroundStyle(Theme.secondaryText)
+            } else if !ClaudeClient.hasKey {
+                Text("Per la stima dalla foto inserisci la chiave API di Anthropic in Impostazioni.")
+                    .font(.caption).foregroundStyle(Theme.secondaryText)
+            } else {
+                Button { confirmSend = true } label: {
+                    HStack { if analyzing { ProgressView() }; Text(photo.estimateLow == nil ? "Stima il grasso dalla foto" : "Stima di nuovo") }
+                }
+                .buttonStyle(.bordered).disabled(analyzing)
+            }
+            if let error { Text(error).font(.caption).foregroundStyle(Theme.move) }
+            Text("È una stima con un margine di errore di diversi punti percentuali (luce, posa e pelle cambiano il risultato). Non è una misura medica: usala solo per confrontare nel tempo, al massimo una volta ogni 1-2 settimane. Se il rapporto con il tuo corpo o il cibo ti crea disagio, parlane con un professionista.")
+                .font(.caption2).foregroundStyle(Theme.secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 8)
+    }
+
+    fileprivate func runEstimate() {
+        analyzing = true
+        error = nil
+        let file = photo.filename
+        let p = profile.profile
+        Task {
+            do {
+                let result = try await PhotoAnalyzer.estimate(photoFile: file, profile: p)
+                photo.estimateLow = result.low
+                photo.estimateHigh = result.high
+                photo.estimateConfidence = result.confidence
+                notes = result.notes
+            } catch {
+                self.error = error.localizedDescription
+            }
+            analyzing = false
         }
     }
 }

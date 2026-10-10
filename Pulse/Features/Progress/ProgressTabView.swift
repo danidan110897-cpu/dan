@@ -96,6 +96,9 @@ struct ProgressTabView: View {
             }
             .background(Theme.background.ignoresSafeArea())
             .navigationTitle("Progressi")
+            .toolbar {
+                NavigationLink { WeeklyReportView() } label: { Label("Settimana", systemImage: "calendar") }
+            }
             .onAppear { withAnimation(.smooth(duration: 1.0).delay(0.15)) { reveal = true } }
         }
     }

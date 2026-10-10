@@ -12,6 +12,7 @@ struct ExerciseBrowser: View {
     @State private var muscle: MuscleGroup?
     @State private var chosen: Set<String> = []
     @State private var showCreate = false
+    @State private var detail: Exercise?
 
     init(onPick: (([Exercise]) -> Void)? = nil) {
         self.onPick = onPick
@@ -42,6 +43,7 @@ struct ExerciseBrowser: View {
             }
             Section {
                 ForEach(filtered) { ex in
+                    HStack(spacing: 0) {
                     Button { tap(ex) } label: {
                         HStack(spacing: 12) {
                             Image(systemName: ex.muscle.symbol).frame(width: 28).foregroundStyle(Theme.accent)
@@ -59,6 +61,13 @@ struct ExerciseBrowser: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    if isPicker {
+                        Button { detail = ex } label: { Image(systemName: "info.circle").padding(.leading, 12) }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(Theme.secondaryText)
+                            .accessibilityLabel("Come si esegue \(ex.name)")
+                    }
+                    }
                     .swipeActions {
                         if ex.isCustom {
                             Button("Elimina", role: .destructive) { context.delete(ex) }
@@ -89,11 +98,12 @@ struct ExerciseBrowser: View {
             }
         }
         .sheet(isPresented: $showCreate) { CustomExerciseForm() }
+        .sheet(item: $detail) { ex in NavigationStack { ExerciseDetailView(exercise: ex) } }
         .animation(Motion.snappy, value: filtered.count)
     }
 
     private func tap(_ ex: Exercise) {
-        guard isPicker else { return }
+        guard isPicker else { detail = ex; return }
         if chosen.contains(ex.key) { chosen.remove(ex.key) } else { chosen.insert(ex.key) }
     }
 

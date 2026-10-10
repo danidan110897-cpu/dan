@@ -53,6 +53,7 @@ struct WorkoutSessionView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Termina") { showFinish = true }.fontWeight(.semibold)
             }
+            ToolbarItem(placement: .topBarTrailing) { MusicMenu() }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Fine") {
@@ -122,6 +123,7 @@ private struct ExerciseCard: View {
     let onToggle: (UUID) -> Void
     let onAddSet: () -> Void
     let onEdit: () -> Void
+    @State private var showGuide = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -134,6 +136,11 @@ private struct ExerciseCard: View {
                     }
                 }
                 Spacer()
+                Button { showGuide = true } label: {
+                    Image(systemName: "info.circle").font(.title3).foregroundStyle(Theme.secondaryText)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Come si esegue \(exercise.name)")
                 if exercise.superset != 0 {
                     Text("SUPERSET").font(.caption2.weight(.heavy))
                         .padding(.horizontal, 8).padding(.vertical, 3)
@@ -163,6 +170,11 @@ private struct ExerciseCard: View {
         }
         .padding(16)
         .card()
+        .sheet(isPresented: $showGuide) {
+            NavigationStack {
+                ExerciseDetailView(key: exercise.key, name: exercise.name, muscle: exercise.muscle, equipment: exercise.equipment)
+            }
+        }
     }
 }
 

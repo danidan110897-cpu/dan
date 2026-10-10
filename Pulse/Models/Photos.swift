@@ -8,6 +8,10 @@ final class ProgressPhoto {
     var filename: String
     var note: String
     var weightKg: Double?
+    /// AI body-fat estimate range for this photo (percent), if the user asked for one.
+    var estimateLow: Double?
+    var estimateHigh: Double?
+    var estimateConfidence: String?
 
     init(date: Date, filename: String, note: String = "", weightKg: Double? = nil) {
         self.date = date
@@ -49,6 +53,15 @@ enum PhotoStorage {
         guard let image = UIImage(contentsOfFile: directory.appending(path: filename).path) else { return nil }
         cache.setObject(image, forKey: filename as NSString)
         return image
+    }
+
+    /// JPEG of the stored photo scaled down so it is cheap to send for analysis.
+    static func jpegData(_ filename: String, maxSide: CGFloat) -> Data? {
+        guard let original = image(filename) else { return nil }
+        let scale = min(1, maxSide / max(original.size.width, original.size.height))
+        let size = CGSize(width: original.size.width * scale, height: original.size.height * scale)
+        let scaled = UIGraphicsImageRenderer(size: size).image { _ in original.draw(in: CGRect(origin: .zero, size: size)) }
+        return scaled.jpegData(compressionQuality: 0.8)
     }
 
     static func delete(_ filename: String) {

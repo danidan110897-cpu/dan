@@ -16,6 +16,7 @@ struct SessionExercise: Identifiable {
     let key: String
     let name: String
     let muscle: MuscleGroup
+    let equipment: Equipment
     var sets: [SessionSet]
     /// Best weight x reps seen in past sessions. Nil when there is no history, so a first session never counts as a PR.
     var bestVolume: Double?
@@ -71,7 +72,7 @@ final class WorkoutSession {
                     previous: ref.map { "\(formatWeight($0.weight)) × \($0.reps)" } ?? "—"
                 )
             }
-            exercises.append(SessionExercise(key: ex.key, name: ex.name, muscle: ex.muscle, sets: sets,
+            exercises.append(SessionExercise(key: ex.key, name: ex.name, muscle: ex.muscle, equipment: ex.equipment, sets: sets,
                                              bestVolume: best[ex.key], superset: item.supersetGroup, hint: hint))
         }
         return WorkoutSession(title: routine.name, exercises: exercises, restSeconds: routine.restSeconds)

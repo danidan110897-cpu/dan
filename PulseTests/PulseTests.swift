@@ -128,3 +128,38 @@ struct FoodTests {
         #expect(FoodAPI.translate("qualcosa di strano") == "qualcosa di strano")
     }
 }
+
+struct GuideAndReportTests {
+    @Test func everyBuiltInExerciseHasAnExecutionGuide() {
+        for key in ExerciseSeed.keys {
+            let guide = ExerciseGuides.guide(for: key)
+            #expect(guide != nil, "manca la guida per \(key)")
+            #expect((guide?.steps.count ?? 0) >= 2)
+            #expect(!(guide?.mistakes.isEmpty ?? true))
+        }
+    }
+
+    @Test func weeklyReportCountsWorkoutsAndFlagsLowProtein() {
+        let now = Date()
+        let thisWeek = WorkoutLog(date: now.addingTimeInterval(-86400), name: "A", durationSeconds: 3000, volume: 5000)
+        let lastWeek = WorkoutLog(date: now.addingTimeInterval(-9 * 86400), name: "A", durationSeconds: 3000, volume: 4000)
+        var foods: [FoodEntry] = []
+        for d in 1...4 {
+            foods.append(FoodEntry(date: now.addingTimeInterval(Double(-d) * 86400), meal: .lunch, name: "x", grams: 100,
+                                   kcal: 2000, protein: 40, carbs: 200, fat: 60, itemKey: "k"))
+        }
+        var profile = BodyProfile()
+        profile.weightKg = 80
+        let report = WeeklyReport.make(logs: [thisWeek, lastWeek], foods: foods, weights: [], analysis: BodyAnalysis(p: profile), now: now)
+        #expect(report.workouts == 1 && report.prevWorkouts == 1)
+        #expect(report.volumeChangePercent == 25)
+        #expect(report.daysLogged == 4)
+        #expect(report.tips.contains { $0.contains("Proteine") })
+    }
+
+    @Test func weeklyReportWithNoDataSuggestsStarting() {
+        let report = WeeklyReport.make(logs: [], foods: [], weights: [], analysis: BodyAnalysis(p: BodyProfile()))
+        #expect(report.workouts == 0)
+        #expect(report.tips.count >= 2)
+    }
+}

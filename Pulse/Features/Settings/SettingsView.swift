@@ -6,6 +6,8 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var context
     @AppStorage("healthSync") private var healthSync = true
     @AppStorage("usdaKey") private var usdaKey = "DEMO_KEY"
+    @AppStorage("playlistURL") private var playlistURL = ""
+    @AppStorage("photoReminder") private var photoReminder = false
     @State private var claudeKey = KeychainStore.get(ClaudeGenerator.keychainAccount) ?? ""
     @State private var exportURL: URL?
     @State private var exportError: String?
@@ -39,6 +41,24 @@ struct SettingsView: View {
                     Text("Chiave USDA (facoltativa)")
                 } footer: {
                     Text("DEMO_KEY ha un limite di richieste. Una chiave gratuita si ottiene su fdc.nal.usda.gov.")
+                }
+
+                Section {
+                    TextField("https://open.spotify.com/playlist/…", text: $playlistURL)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                } header: {
+                    Text("Playlist allenamento")
+                } footer: {
+                    Text("Incolla il link di una playlist (Spotify, YouTube Music o Apple Music): dal menu musica nell'allenamento si apre con un tocco. Il controllo della riproduzione dentro l'app è possibile solo con Spotify e non è ancora attivo.")
+                }
+
+                Section {
+                    Toggle("Promemoria foto e riepilogo (domenica 10:00)", isOn: $photoReminder)
+                        .onChange(of: photoReminder) { _, on in
+                            Task { if await Reminders.setWeeklyPhoto(enabled: on) == false { photoReminder = false } }
+                        }
+                } header: {
+                    Text("Promemoria")
                 }
 
                 Section("I tuoi dati") {
