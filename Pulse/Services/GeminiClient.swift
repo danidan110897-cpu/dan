@@ -4,7 +4,8 @@ import Foundation
 /// so every photo and text feature works without paying. Answers are requested as JSON matching the same schemas.
 enum GeminiClient {
     static let keychainAccount = "gemini-api-key"
-    static let model = "gemini-2.5-flash"
+    /// Tried in order: Google retires models for new keys from time to time, so the app falls through to the next name.
+    static let models = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"]
 
     /// Key baked into the build from Config/Secrets.xcconfig (never committed). Empty when the build has none.
     static var bundledKey: String {
@@ -49,21 +50,30 @@ enum GeminiClient {
             "contents": [["role": "user", "parts": parts]],
             "generationConfig": ["responseMimeType": "application/json", "temperature": 0.4],
         ]
-        var req = URLRequest(url: URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!)
-        req.httpMethod = "POST"
-        req.timeoutInterval = 120
-        req.setValue(key, forHTTPHeaderField: "x-goog-api-key")
-        req.setValue("application/json", forHTTPHeaderField: "content-type")
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let payloadData = try JSONSerialization.data(withJSONObject: body)
+        var lastError = "Nessun modello Gemini disponibile."
+        var json: [String: Any] = [:]
+        var succeeded = false
+        for model in models {
+            var req = URLRequest(url: URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!)
+            req.httpMethod = "POST"
+            req.timeoutInterval = 120
+            req.setValue(key, forHTTPHeaderField: "x-goog-api-key")
+            req.setValue("application/json", forHTTPHeaderField: "content-type")
+            req.httpBody = payloadData
 
-        let (data, response) = try await URLSession.shared.data(for: req)
-        let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            if (200..<300).contains(status) { succeeded = true; break }
             let message = ((json["error"] as? [String: Any])?["message"] as? String) ?? "Errore \(status)"
             if status == 429 { throw GeneratorError.badResponse("Hai finito le richieste gratuite di Gemini per ora. Riprova più tardi.") }
-            throw GeneratorError.badResponse("Gemini ha risposto: \(message)")
+            lastError = message
+            // Only a retired or unknown model is worth trying the next name for.
+            let modelProblem = status == 404 || message.contains("no longer available") || message.contains("not found")
+            if !modelProblem { throw GeneratorError.badResponse("Gemini ha risposto: \(message)") }
         }
+        guard succeeded else { throw GeneratorError.badResponse("Gemini ha risposto: \(lastError)") }
         guard let candidate = (json["candidates"] as? [[String: Any]])?.first,
               let responseParts = (candidate["content"] as? [String: Any])?["parts"] as? [[String: Any]],
               let text = responseParts.compactMap({ $0["text"] as? String }).first,
