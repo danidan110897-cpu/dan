@@ -99,7 +99,15 @@ struct FoodPhotoSheet: View {
 
                 if analyzed {
                     Section("Alimenti riconosciuti") {
-                        if rows.isEmpty { Text("Nessun alimento riconosciuto.").foregroundStyle(Theme.secondaryText) }
+                        if rows.isEmpty {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Nessun alimento riconosciuto.").foregroundStyle(Theme.secondaryText)
+                                if method == .onDevice && ClaudeClient.hasKey {
+                                    Text("Il riconoscimento sul telefono è di base. Per piatti completi scegli \"AI cloud\" qui sopra.")
+                                        .font(.footnote).foregroundStyle(Theme.recover)
+                                }
+                            }
+                        }
                         ForEach($rows) { $row in
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
@@ -151,6 +159,7 @@ struct FoodPhotoSheet: View {
                     .sensoryFeedback(.success, trigger: rows.count)
                 }
             }
+            .onAppear { if ClaudeClient.hasKey { method = .claude } }
             .animation(Motion.smooth, value: analyzed)
             .animation(Motion.snappy, value: rows.count)
             .animation(Motion.snappy, value: imageData)
@@ -208,7 +217,7 @@ struct FoodPhotoSheet: View {
                 note = result.note
                 analyzed = true
             } catch {
-                self.error = error.localizedDescription
+                self.error = error.localizedDescription + (method == .claude ? " Puoi riprovare, oppure scegliere \"Sul telefono\" qui sopra." : "")
             }
             loading = false
         }
