@@ -1,8 +1,9 @@
 import SwiftUI
+import SwiftData
 import Observation
 
-struct SetEntry: Identifiable {
-    let id = UUID()
+struct SessionSet: Identifiable, Equatable {
+    var id = UUID()
     var weight: Double
     var reps: Int
     var previous: String
@@ -10,52 +11,79 @@ struct SetEntry: Identifiable {
     var isPR = false
 }
 
-struct ExerciseLog: Identifiable {
+struct SessionExercise: Identifiable {
     let id = UUID()
+    let key: String
     let name: String
-    let muscle: String
-    var sets: [SetEntry]
-    /// Best weight x reps volume seen so far, used for PR detection.
-    var bestVolume: Double
+    let muscle: MuscleGroup
+    var sets: [SessionSet]
+    /// Best weight x reps seen in past sessions. Nil when there is no history, so a first session never counts as a PR.
+    var bestVolume: Double?
+    var superset: Int
 }
 
+/// A workout in progress. Built from a routine plus past history, saved to SwiftData at the end.
 @MainActor @Observable
 final class WorkoutSession {
-    var exercises: [ExerciseLog] = [
-        ExerciseLog(name: "Panca piana", muscle: "Petto", sets: [
-            SetEntry(weight: 80, reps: 8, previous: "77.5 × 8"),
-            SetEntry(weight: 80, reps: 8, previous: "77.5 × 8"),
-            SetEntry(weight: 80, reps: 8, previous: "77.5 × 7"),
-        ], bestVolume: 620),
-        ExerciseLog(name: "Croci ai cavi", muscle: "Petto", sets: [
-            SetEntry(weight: 15, reps: 12, previous: "15 × 12"),
-            SetEntry(weight: 15, reps: 12, previous: "15 × 11"),
-        ], bestVolume: 180),
-        ExerciseLog(name: "French press", muscle: "Tricipiti", sets: [
-            SetEntry(weight: 30, reps: 10, previous: "27.5 × 10"),
-            SetEntry(weight: 30, reps: 10, previous: "27.5 × 10"),
-        ], bestVolume: 275),
-    ]
+    var title: String
+    var exercises: [SessionExercise]
+    let startedAt = Date()
 
     var restRemaining = 0
-    var restTotal = 90
+    var restTotal: Int
     var prTrigger = 0
     private var restTask: Task<Void, Never>?
 
-    var isResting: Bool { restRemaining > 0 }
+    /// Called after any change so the Watch link can push a fresh snapshot.
+    var onUpdate: (() -> Void)?
 
+    init(title: String, exercises: [SessionExercise], restSeconds: Int) {
+        self.title = title
+        self.exercises = exercises
+        self.restTotal = restSeconds
+    }
+
+    static func make(from routine: Routine, context: ModelContext) -> WorkoutSession {
+        let logs = (try? context.fetch(FetchDescriptor<WorkoutLog>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+        var last: [String: [LogSet]] = [:]
+        var best: [String: Double] = [:]
+        for log in logs {
+            for entry in log.entries {
+                if last[entry.exerciseKey] == nil { last[entry.exerciseKey] = entry.sortedSets }
+                for s in entry.sets {
+                    best[entry.exerciseKey] = max(best[entry.exerciseKey] ?? 0, s.weight * Double(s.reps))
+                }
+            }
+        }
+
+        var exercises: [SessionExercise] = []
+        for item in routine.sortedItems {
+            guard let ex = item.exercise else { continue }
+            let prev = last[ex.key] ?? []
+            let sets = (0..<max(item.sets, 1)).map { i -> SessionSet in
+                let ref = i < prev.count ? prev[i] : prev.last
+                return SessionSet(
+                    weight: ref?.weight ?? item.weight,
+                    reps: ref?.reps ?? item.reps,
+                    previous: ref.map { "\(formatWeight($0.weight)) × \($0.reps)" } ?? "—"
+                )
+            }
+            exercises.append(SessionExercise(key: ex.key, name: ex.name, muscle: ex.muscle, sets: sets,
+                                             bestVolume: best[ex.key], superset: item.supersetGroup))
+        }
+        return WorkoutSession(title: routine.name, exercises: exercises, restSeconds: routine.restSeconds)
+    }
+
+    var isResting: Bool { restRemaining > 0 }
     var completedSets: Int { exercises.flatMap(\.sets).filter(\.isDone).count }
     var totalSets: Int { exercises.flatMap(\.sets).count }
     var totalVolume: Double {
         exercises.flatMap(\.sets).filter(\.isDone).reduce(0) { $0 + $1.weight * Double($1.reps) }
     }
 
-    /// Called after any change so the Watch link can push a fresh snapshot.
-    var onUpdate: (() -> Void)?
-
     var snapshot: WorkoutSnapshot {
         WorkoutSnapshot(
-            title: "Push",
+            title: title,
             restSeconds: restTotal,
             exercises: exercises.map { ex in
                 .init(id: ex.id, name: ex.name, sets: ex.sets.map {
@@ -66,20 +94,22 @@ final class WorkoutSession {
     }
 
     /// Applies a set toggle coming from the Watch; ignored if already in that state.
-    func apply(_ toggle: SetToggle) {
-        guard let e = exercises.firstIndex(where: { $0.id == toggle.exerciseID }),
-              let s = exercises[e].sets.firstIndex(where: { $0.id == toggle.setID }),
-              exercises[e].sets[s].isDone != toggle.isDone else { return }
-        withAnimation(Motion.snappy) { self.toggle(exercise: e, set: s) }
+    func apply(_ change: SetToggle) {
+        guard let e = exercises.firstIndex(where: { $0.id == change.exerciseID }),
+              let s = exercises[e].sets.firstIndex(where: { $0.id == change.setID }),
+              exercises[e].sets[s].isDone != change.isDone else { return }
+        withAnimation(Motion.snappy) { toggle(exerciseID: change.exerciseID, setID: change.setID) }
     }
 
-    func toggle(exercise e: Int, set s: Int) {
+    func toggle(exerciseID: UUID, setID: UUID) {
+        guard let e = exercises.firstIndex(where: { $0.id == exerciseID }),
+              let s = exercises[e].sets.firstIndex(where: { $0.id == setID }) else { return }
         defer { onUpdate?() }
         var set = exercises[e].sets[s]
         set.isDone.toggle()
         if set.isDone {
             let volume = set.weight * Double(set.reps)
-            if volume > exercises[e].bestVolume {
+            if let best = exercises[e].bestVolume, volume > best {
                 set.isPR = true
                 exercises[e].bestVolume = volume
                 prTrigger += 1
@@ -89,6 +119,13 @@ final class WorkoutSession {
             set.isPR = false
         }
         exercises[e].sets[s] = set
+    }
+
+    func addSet(to exerciseID: UUID) {
+        guard let e = exercises.firstIndex(where: { $0.id == exerciseID }) else { return }
+        let ref = exercises[e].sets.last
+        exercises[e].sets.append(SessionSet(weight: ref?.weight ?? 0, reps: ref?.reps ?? 10, previous: "—"))
+        onUpdate?()
     }
 
     func startRest(seconds: Int) {
@@ -113,4 +150,31 @@ final class WorkoutSession {
         restTask?.cancel()
         restRemaining = 0
     }
+
+    /// Saves completed sets as a WorkoutLog. Returns false when nothing was completed.
+    @discardableResult
+    func save(to context: ModelContext) -> Bool {
+        skipRest()
+        var entries: [LogEntry] = []
+        for (i, ex) in exercises.enumerated() {
+            let done = ex.sets.filter(\.isDone)
+            guard !done.isEmpty else { continue }
+            let entry = LogEntry(exerciseKey: ex.key, exerciseName: ex.name, muscleRaw: ex.muscle.rawValue, order: i)
+            entry.sets = done.enumerated().map { LogSet(order: $0.offset, weight: $0.element.weight, reps: $0.element.reps, isPR: $0.element.isPR) }
+            entries.append(entry)
+        }
+        guard !entries.isEmpty else { return false }
+        let log = WorkoutLog(date: startedAt, name: title,
+                             durationSeconds: Int(Date().timeIntervalSince(startedAt)),
+                             volume: totalVolume)
+        context.insert(log)
+        log.entries = entries
+        try? context.save()
+        return true
+    }
+}
+
+extension WorkoutSession: Hashable {
+    nonisolated static func == (lhs: WorkoutSession, rhs: WorkoutSession) -> Bool { lhs === rhs }
+    nonisolated func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) }
 }
