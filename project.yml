@@ -106,3 +106,9 @@ schemes:
         Pulse: all
     test:
       targets: [PulseTests]
+  PulseWatch:
+    build:
+      targets:
+        PulseWatch: all
+    run:
+      config: Debug
