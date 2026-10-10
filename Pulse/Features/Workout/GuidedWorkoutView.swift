@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Hands-free flow: the app walks you through every set. You only press "Fatto" when the set is over
 /// (or let it complete on its own); rest and the next set start by themselves.
