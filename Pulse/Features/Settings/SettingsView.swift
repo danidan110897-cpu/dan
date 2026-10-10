@@ -49,9 +49,9 @@ struct SettingsView: View {
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         .onChange(of: claudeKey) { ClaudeClient.saveKey(claudeKey) }
                 } header: {
-                    Text("Chiave AI per foto e analisi (facoltativa)")
+                    Text(GeminiClient.bundledKey.isEmpty ? "Chiave AI per foto e analisi (facoltativa)" : "Chiave AI: già inclusa nell'app")
                 } footer: {
-                    Text("Gratis: crea una chiave Google su aistudio.google.com/apikey (basta l'account Google, niente carta) e incollala qui. Serve per leggere le foto di cibo e corpo. Resta nel Keychain di questo iPhone. Sul piano gratuito Google può usare i contenuti inviati per migliorare i suoi servizi: le foto del corpo non vengono mai inviate senza una tua conferma.")
+                    Text((GeminiClient.bundledKey.isEmpty ? "" : "Non devi fare nulla: l'app ha già una chiave Google gratuita. Questo campo serve solo se vuoi usare la tua. ") + "Gratis: crea una chiave Google su aistudio.google.com/apikey (basta l'account Google, niente carta) e incollala qui. Serve per leggere le foto di cibo e corpo. Resta nel Keychain di questo iPhone. Sul piano gratuito Google può usare i contenuti inviati per migliorare i suoi servizi: le foto del corpo non vengono mai inviate senza una tua conferma.")
                 }
 
                 Section {

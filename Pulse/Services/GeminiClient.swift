@@ -6,10 +6,23 @@ enum GeminiClient {
     static let keychainAccount = "gemini-api-key"
     static let model = "gemini-2.5-flash"
 
-    static var hasKey: Bool { !(KeychainStore.get(keychainAccount) ?? "").isEmpty }
+    /// Key baked into the build from Config/Secrets.xcconfig (never committed). Empty when the build has none.
+    static var bundledKey: String {
+        let value = (Bundle.main.object(forInfoDictionaryKey: "GeminiAPIKey") as? String) ?? ""
+        return value.hasPrefix("AIza") ? value : ""
+    }
+
+    /// A key typed in Settings wins; otherwise the one built into the app.
+    static var activeKey: String {
+        let typed = KeychainStore.get(keychainAccount) ?? ""
+        return typed.isEmpty ? bundledKey : typed
+    }
+
+    static var hasKey: Bool { !activeKey.isEmpty }
 
     static func json(system: String, content: [[String: Any]], schema: [String: Any]) async throws -> [String: Any] {
-        guard let key = KeychainStore.get(keychainAccount), !key.isEmpty else {
+        let key = activeKey
+        guard !key.isEmpty else {
             throw GeneratorError.unavailable("Inserisci la tua chiave gratuita di Google (Gemini) in Impostazioni.")
         }
         var parts: [[String: Any]] = []

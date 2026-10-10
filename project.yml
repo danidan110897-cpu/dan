@@ -17,6 +17,9 @@ targets:
     type: application
     platform: iOS
     sources: [Pulse, Shared, SharedLive]
+    configFiles:
+      Debug: Config/App.xcconfig
+      Release: Config/App.xcconfig
     entitlements:
       path: Pulse/Pulse.entitlements
       properties:
@@ -30,6 +33,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.danielioja.pulse
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/Pulse-Extra.plist
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
