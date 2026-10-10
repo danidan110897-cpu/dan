@@ -13,17 +13,20 @@ final class Router {
 @main
 struct PulseApp: App {
     @State private var router = Router()
+    @State private var profile = ProfileStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(router)
+                .environment(profile)
                 .preferredColorScheme(.dark)
                 .tint(Theme.accent)
         }
         .modelContainer(for: [
             Exercise.self, Routine.self, RoutineItem.self,
             WorkoutLog.self, LogEntry.self, LogSet.self,
+            FoodItem.self, FoodEntry.self,
         ])
     }
 }
@@ -37,6 +40,7 @@ struct RootView: View {
         TabView(selection: $router.tab) {
             Tab("Oggi", systemImage: "flame.fill", value: AppTab.today) { HomeView() }
             Tab("Allenamenti", systemImage: "dumbbell.fill", value: AppTab.workouts) { RoutinesView() }
+            Tab("Cibo", systemImage: "fork.knife", value: AppTab.food) { FoodView() }
             Tab("Progressi", systemImage: "chart.xyaxis.line", value: AppTab.progress) { ProgressTabView() }
             Tab("Corpo", systemImage: "figure.arms.open", value: AppTab.body) { BodyView() }
         }

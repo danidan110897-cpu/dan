@@ -27,6 +27,7 @@ targets:
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_CFBundleDisplayName: Pulse
+        INFOPLIST_KEY_NSCameraUsageDescription: Pulse usa la fotocamera per leggere i codici a barre dei prodotti.
   PulseWatch:
     type: application
     platform: watchOS

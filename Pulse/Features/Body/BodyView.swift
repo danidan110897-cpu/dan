@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 
 struct BodyView: View {
-    @State private var store = ProfileStore()
+    @Environment(ProfileStore.self) private var store
     @State private var showEditor = false
     @State private var shown = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
