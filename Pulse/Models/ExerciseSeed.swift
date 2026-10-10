@@ -84,6 +84,10 @@ enum ExerciseSeed {
 
     static var keys: Set<String> { Set(rows.map(\.key)) }
 
+    static var libraryEntries: [LibraryEntry] {
+        rows.map { LibraryEntry(key: $0.key, name: $0.name, muscle: $0.muscle, equipment: $0.equipment) }
+    }
+
     /// Inserts any built-in exercise that is not in the store yet (safe to call on every launch).
     static func seedIfNeeded(_ context: ModelContext) {
         let existing = Set(((try? context.fetch(FetchDescriptor<Exercise>())) ?? []).map(\.key))

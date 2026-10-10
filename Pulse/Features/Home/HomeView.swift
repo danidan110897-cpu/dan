@@ -9,6 +9,7 @@ struct HomeView: View {
 
     private let health = HealthStore.shared
     @State private var shown = false
+    @State private var showSettings = false
     @State private var active: WorkoutSession?
     @Namespace private var zoom
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -77,6 +78,10 @@ struct HomeView: View {
             }
             .onAppear { shown = true }
             .task { await health.requestAndRefresh() }
+            .toolbar {
+                Button("Impostazioni", systemImage: "gearshape") { showSettings = true }
+            }
+            .sheet(isPresented: $showSettings) { SettingsView() }
         }
     }
 

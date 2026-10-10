@@ -37,6 +37,16 @@ targets:
         INFOPLIST_KEY_NSHealthShareUsageDescription: Pulse legge passi, sonno, HRV e battito per calcolare il tuo recupero.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Pulse salva in Salute cibo, peso e allenamenti.
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
+  PulseTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [PulseTests]
+    dependencies:
+      - target: Pulse
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dan.pulse.tests
+        GENERATE_INFOPLIST_FILE: YES
   PulseWidgets:
     type: app-extension
     platform: iOS
@@ -68,3 +78,10 @@ targets:
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
         INFOPLIST_KEY_NSHealthShareUsageDescription: Pulse legge battito e calorie per mostrarli durante l'allenamento.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Pulse salva i tuoi allenamenti in Salute.
+schemes:
+  Pulse:
+    build:
+      targets:
+        Pulse: all
+    test:
+      targets: [PulseTests]

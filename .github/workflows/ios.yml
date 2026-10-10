@@ -15,7 +15,14 @@ jobs:
           xcodebuild -version
       - run: brew install xcodegen
       - run: xcodegen generate
-      - run: >
+      - name: Build
+        run: >
           xcodebuild build -project Pulse.xcodeproj -scheme Pulse
           -destination 'generic/platform=iOS Simulator'
           CODE_SIGNING_ALLOWED=NO
+      - name: Test
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if 'iPhone' in x['name']))")
+          xcodebuild test -project Pulse.xcodeproj -scheme Pulse \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            CODE_SIGNING_ALLOWED=NO

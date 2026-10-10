@@ -34,15 +34,24 @@ struct PulseApp: App {
 struct RootView: View {
     @Environment(Router.self) private var router
     @Environment(\.modelContext) private var context
+    @AppStorage("onboarded") private var onboarded = false
 
     var body: some View {
         @Bindable var router = router
-        TabView(selection: $router.tab) {
-            Tab("Oggi", systemImage: "flame.fill", value: AppTab.today) { HomeView() }
-            Tab("Allenamenti", systemImage: "dumbbell.fill", value: AppTab.workouts) { RoutinesView() }
-            Tab("Cibo", systemImage: "fork.knife", value: AppTab.food) { FoodView() }
-            Tab("Progressi", systemImage: "chart.xyaxis.line", value: AppTab.progress) { ProgressTabView() }
-            Tab("Corpo", systemImage: "figure.arms.open", value: AppTab.body) { BodyView() }
+        Group {
+            if onboarded {
+                TabView(selection: $router.tab) {
+                    Tab("Oggi", systemImage: "flame.fill", value: AppTab.today) { HomeView() }
+                    Tab("Allenamenti", systemImage: "dumbbell.fill", value: AppTab.workouts) { RoutinesView() }
+                    Tab("Cibo", systemImage: "fork.knife", value: AppTab.food) { FoodView() }
+                    Tab("Progressi", systemImage: "chart.xyaxis.line", value: AppTab.progress) { ProgressTabView() }
+                    Tab("Corpo", systemImage: "figure.arms.open", value: AppTab.body) { BodyView() }
+                }
+                .transition(.opacity)
+            } else {
+                OnboardingView { withAnimation(Motion.smooth) { onboarded = true } }
+                    .transition(.opacity)
+            }
         }
         .task { ExerciseSeed.seedIfNeeded(context) }
     }
