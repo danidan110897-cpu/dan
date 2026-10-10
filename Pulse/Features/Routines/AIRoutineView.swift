@@ -22,6 +22,7 @@ struct AIRoutineView: View {
     @State private var error: String?
     @State private var plan: GeneratedPlan?
     @State private var info: String?
+    @State private var place = 0
 
     private var library: [LibraryEntry] {
         exercises.map { LibraryEntry(key: $0.key, name: $0.name, muscle: $0.muscle, equipment: $0.equipment) }
@@ -36,6 +37,9 @@ struct AIRoutineView: View {
                 Picker("Livello", selection: $request.level) {
                     ForEach(TrainingLevel.allCases) { Text($0.label).tag($0) }
                 }
+                Picker("Stile", selection: $request.style) {
+                    ForEach(TrainingStyle.allCases) { Text($0.label).tag($0) }
+                }
                 Stepper("Giorni a settimana: \(request.daysPerWeek)", value: $request.daysPerWeek, in: 1...6)
                 Picker("Durata", selection: $request.minutes) {
                     ForEach([30, 45, 60, 75, 90], id: \.self) { Text("\($0) min").tag($0) }
@@ -44,6 +48,19 @@ struct AIRoutineView: View {
             .listRowBackground(Theme.card)
 
             Section("Attrezzatura disponibile") {
+                Picker("Dove ti alleni", selection: $place) {
+                    Text("Palestra").tag(0)
+                    Text("Casa + manubri").tag(1)
+                    Text("Corpo libero").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: place) {
+                    switch place {
+                    case 1: request.equipment = [.dumbbell, .bodyweight]
+                    case 2: request.equipment = [.bodyweight]
+                    default: request.equipment = Set(Equipment.allCases)
+                    }
+                }
                 ForEach(Equipment.allCases) { eq in
                     Toggle(eq.label, isOn: Binding(
                         get: { request.equipment.contains(eq) },

@@ -86,6 +86,8 @@ enum VoiceWorkoutBuilder {
             request.injuries = t
             if !PlanValidator.excludedKeys(for: t).isEmpty { notes.append("Ho evitato gli esercizi più a rischio per il problema che hai detto.") }
         }
+        let hit = ["alta intensita", "poco volume", "heavy duty", "cedimento", "hit "].contains { t.contains($0) }
+        if hit { notes.append("Poco volume e alta intensità: poche serie, portate vicino al cedimento.") }
         let light = ["leggero", "stanco", "scarico", "poco tempo", "senza esagerare"].contains { t.contains($0) }
         if light { notes.append("Versione leggera: una serie in meno.") }
 
@@ -100,7 +102,7 @@ enum VoiceWorkoutBuilder {
         guard !available.isEmpty else { throw BuildError.noMuscle }
 
         // About 7 minutes per exercise (3 sets plus rest).
-        let slots = max(available.count, min(max(minutes / 7, 3), 10))
+        let slots = hit ? max(available.count, min(5, available.count + 2)) : max(available.count, min(max(minutes / 7, 3), 10))
         var counts = Dictionary(uniqueKeysWithValues: available.map { ($0, 1) })
         var remaining = slots - available.count
         var i = 0
@@ -115,9 +117,9 @@ enum VoiceWorkoutBuilder {
         for m in available {
             for (index, entry) in pools[m]!.prefix(counts[m]!).enumerated() {
                 let compound = index == 0 && ![.core, .calves, .biceps, .triceps].contains(m)
-                var sets = compound && minutes >= 60 ? 4 : 3
+                var sets = hit ? (index == 0 ? 3 : 2) : (compound && minutes >= 60 ? 4 : 3)
                 if light { sets = max(sets - 1, 1) }
-                let reps = m == .calves || m == .core ? 15 : compound ? 8 : 12
+                let reps = hit ? 8 : (m == .calves || m == .core ? 15 : compound ? 8 : 12)
                 exercises.append(GeneratedExercise(key: entry.key, sets: sets, reps: reps, note: ""))
             }
         }

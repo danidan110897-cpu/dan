@@ -153,6 +153,8 @@ final class LogSet {
     var weight: Double
     var reps: Int
     var isPR: Bool
+    /// Reps left in the tank (0 = to failure). -1 when not recorded.
+    var rir: Int = -1
 
     init(order: Int, weight: Double, reps: Int, isPR: Bool) {
         self.order = order

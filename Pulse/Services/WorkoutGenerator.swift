@@ -27,7 +27,19 @@ enum TrainingLevel: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+enum TrainingStyle: String, CaseIterable, Identifiable, Codable {
+    case standard, highIntensity
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .standard: "Classico"
+        case .highIntensity: "Poco volume, alta intensità"
+        }
+    }
+}
+
 struct GenerationRequest {
+    var style: TrainingStyle = .standard
     var goal: TrainingGoal = .hypertrophy
     var level: TrainingLevel = .intermediate
     var daysPerWeek = 3
@@ -127,14 +139,19 @@ enum PlanValidator {
                     continue
                 }
                 guard seen.insert(ex.key).inserted else { continue }
-                let sets = min(max(ex.sets, 1), request.level == .beginner ? 4 : 6)
-                let reps = min(max(ex.reps, 1), 30)
+                var sets = min(max(ex.sets, 1), request.level == .beginner ? 4 : 6)
+                var reps = min(max(ex.reps, 1), 30)
+                if request.style == .highIntensity {
+                    // Few hard sets close to failure: 3 for the first lift, 2 for the rest, 6-10 reps.
+                    sets = min(sets, kept.isEmpty ? 3 : 2)
+                    reps = min(max(reps, 6), 10)
+                }
                 if sets != ex.sets || reps != ex.reps { warnings.append("Volume corretto per «\(entry.name)».") }
                 ex.sets = sets
                 ex.reps = reps
                 kept.append(ex)
             }
-            let maxExercises = request.level == .beginner ? 7 : 10
+            let maxExercises = request.style == .highIntensity ? 5 : (request.level == .beginner ? 7 : 10)
             if kept.count > maxExercises { kept = Array(kept.prefix(maxExercises)); warnings.append("Troppi esercizi in «\(routine.name)»: ridotti a \(maxExercises).") }
             let maxSets = request.level == .beginner ? 20 : 30
             var total = 0
@@ -310,6 +327,7 @@ enum GeneratorPrompt {
         Richiesta:
         - Obiettivo: \(r.goal.label)
         - Livello: \(r.level.label)
+        - Stile: \(r.style == .highIntensity ? "poco volume e alta intensità: 4-5 esercizi per allenamento, 2-3 serie ciascuno, 6-10 ripetizioni, serie portate vicino al cedimento" : "classico")
         - Giorni a settimana: \(r.daysPerWeek) (crea esattamente \(r.daysPerWeek) routine)
         - Durata per allenamento: \(r.minutes) minuti
         - Attrezzatura: \(r.equipment.map(\.label).sorted().joined(separator: ", "))

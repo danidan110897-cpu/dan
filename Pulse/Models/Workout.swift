@@ -9,6 +9,8 @@ struct SessionSet: Identifiable, Equatable {
     var previous: String
     var isDone = false
     var isPR = false
+    /// Reps in reserve reported after the set (0 = failure).
+    var rir: Int? = nil
 }
 
 struct SessionExercise: Identifiable {
@@ -49,6 +51,9 @@ final class WorkoutSession {
     /// When on, a set is marked done by itself once its estimated time is over.
     var autoComplete = false
     var startTrigger = 0
+    /// Indices [exercise, set] of the set finished last, so the effort question has a target.
+    var lastDone: [Int]?
+    var effortNote: String?
     var timeUpTrigger = 0
     /// Average seconds per repetition (controlled tempo), used to estimate how long a set lasts.
     static let secondsPerRep = 3.5
@@ -164,12 +169,43 @@ final class WorkoutSession {
                 exercises[e].bestVolume = volume
                 prTrigger += 1
             }
+            lastDone = [e, s]
+            effortNote = nil
             startRest(seconds: restTotal)
         } else {
             set.isPR = false
+            if lastDone == [e, s] { lastDone = nil }
         }
         exercises[e].sets[s] = set
         if guided, set.isDone { afterGuidedSet() }
+    }
+
+    /// "How many reps did you have left?" Adjusts the next set of the same exercise when the last one was too easy.
+    func recordRIR(_ value: Int) {
+        guard let d = lastDone, exercises.indices.contains(d[0]), exercises[d[0]].sets.indices.contains(d[1]) else { return }
+        exercises[d[0]].sets[d[1]].rir = value
+        let exercise = exercises[d[0]]
+        let next = d[1] + 1
+        switch value {
+        case 0:
+            effortNote = "Cedimento raggiunto. Tieni questo carico."
+        case 1...2:
+            effortNote = "Zona giusta: duro ma pulito."
+        default:
+            let step: Double = switch exercise.equipment {
+            case .bodyweight: 0
+            case .dumbbell: 2
+            case .kettlebell: 4
+            default: 2.5
+            }
+            if step > 0, next < exercise.sets.count, !exercise.sets[next].isDone {
+                exercises[d[0]].sets[next].weight += step
+                effortNote = "Troppo facile: +\(formatWeight(step)) kg alla prossima serie."
+            } else {
+                effortNote = "Troppo facile: la prossima volta aumenta il carico."
+            }
+        }
+        onUpdate?()
     }
 
     func addSet(to exerciseID: UUID) {
@@ -377,7 +413,11 @@ final class WorkoutSession {
             let done = ex.sets.filter(\.isDone)
             guard !done.isEmpty else { continue }
             let entry = LogEntry(exerciseKey: ex.key, exerciseName: ex.name, muscleRaw: ex.muscle.rawValue, order: i)
-            entry.sets = done.enumerated().map { LogSet(order: $0.offset, weight: $0.element.weight, reps: $0.element.reps, isPR: $0.element.isPR) }
+            entry.sets = done.enumerated().map { item in
+                let set = LogSet(order: item.offset, weight: item.element.weight, reps: item.element.reps, isPR: item.element.isPR)
+                set.rir = item.element.rir ?? -1
+                return set
+            }
             entries.append(entry)
         }
         guard !entries.isEmpty else { return false }

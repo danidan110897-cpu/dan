@@ -144,8 +144,36 @@ struct GuidedWorkoutView: View {
                 .font(.system(size: 88, weight: .black, design: .rounded)).foregroundStyle(Theme.recover)
                 .contentTransition(.numericText(countsDown: true))
                 .animation(reduceMotion ? .none : Motion.snappy, value: session.restRemaining)
+            effort
             Text(session.upcomingDescription).font(.subheadline).foregroundStyle(Theme.secondaryText).multilineTextAlignment(.center)
             target
+        }
+    }
+
+    /// One-tap effort check after each set: how many reps were left.
+    @ViewBuilder
+    private var effort: some View {
+        if let d = session.lastDone, session.exercises.indices.contains(d[0]), session.exercises[d[0]].sets.indices.contains(d[1]) {
+            let answered = session.exercises[d[0]].sets[d[1]].rir
+            VStack(spacing: 6) {
+                if answered == nil {
+                    Text("Quante ripetizioni ti restavano?").font(.footnote.weight(.semibold))
+                    HStack(spacing: 8) {
+                        ForEach([0, 1, 2, 3], id: \.self) { value in
+                            Button { withAnimation(Motion.snappy) { session.recordRIR(value) } } label: {
+                                Text(value == 3 ? "3+" : "\(value)").font(.headline).frame(width: 52, height: 40)
+                                    .background(Theme.recover.opacity(0.2), in: RoundedRectangle(cornerRadius: 12))
+                            }
+                            .buttonStyle(PressableStyle())
+                        }
+                    }
+                    Text("0 = non ne facevi un'altra. Più vicino a 0 lavori più duro.").font(.caption2).foregroundStyle(Theme.secondaryText)
+                } else if let note = session.effortNote {
+                    Label(note, systemImage: "checkmark.circle.fill").font(.footnote).foregroundStyle(Theme.accent)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .transition(.opacity)
         }
     }
 
