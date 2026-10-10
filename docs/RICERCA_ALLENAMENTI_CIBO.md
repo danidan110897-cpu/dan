@@ -67,3 +67,21 @@
 3. Cibo: ricerca/barcode/diario/obiettivi.
 4. HealthKit bidirezionale (cibo, peso, sonno, HRV).
 5. Readiness score, Live Activity del recupero, widget.
+
+## 5. AI per creare allenamenti
+
+**Due motori possibili (dietro lo stesso protocollo `WorkoutGenerator`)**
+- **Apple Foundation Models (sul telefono)**: gratis, privato, offline. Richiede iOS 26 e un iPhone con Apple Intelligence; va controllata la disponibilità a runtime (`SystemLanguageModel.default.availability`). Con `@Generable` restituisce direttamente tipi Swift, senza parsing JSON. Limiti riportati da guide terze: contesto di circa 4K token sul modello locale, errori possibili per contesto superato o filtri di sicurezza. Da verificare su developer.apple.com.
+- **Claude API**: risultati più ricchi e ragionati (spiegazioni, adattamento). La chiave API NON va messa nell'app (estraibile): serve un piccolo proxy che la aggiunge, oppure l'opzione App Attest descritta nella documentazione Anthropic. Da leggere nella documentazione ufficiale prima di implementare. Costo a consumo.
+
+**Guardrail (importante, dalle fonti)**
+- Gli LLM sbagliano soprattutto in modo semantico: inventano esercizi che non esistono, ignorano l'attrezzatura disponibile, prescrivono volumi irrealistici. Il JSON malformato è il problema più facile.
+- Soluzione: l'AI può scegliere SOLO tra esercizi della nostra libreria (per ID), poi controlli deterministici: esercizio esistente, attrezzatura, limiti di serie/ripetizioni per livello, infortuni dichiarati. Se fallisce, rigenera o corregge.
+- La stessa richiesta può dare piani diversi a ogni generazione: salvare il piano generato e lasciarlo modificare, non rigenerarlo ogni volta.
+- Gli studi trovano che l'AI da sola non sostituisce una prescrizione personalizzata e progressiva: va presentata come bozza modificabile, con avviso chiaro, e non come consiglio medico.
+
+**Funzioni AI**
+1. "Crea routine": obiettivo, giorni a settimana, attrezzatura, durata, infortuni → bozza di routine modificabile.
+2. "Sostituisci esercizio" (non ho l'attrezzo / mi fa male) con alternativa dello stesso muscolo.
+3. Carico suggerito per la prossima sessione, con motivazione ("hai fatto 8,8,7 a 80 kg → prova 82,5").
+4. Dopo: uso di recupero/sonno/HRV da Salute per adattare il volume.
