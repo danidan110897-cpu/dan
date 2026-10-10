@@ -56,8 +56,9 @@ struct CountdownView: View {
                 Text(step == 0 ? "VIA!" : "\(step)")
                     .font(.system(size: 140, weight: .black, design: .rounded))
                     .foregroundStyle(Theme.accent)
+                    .shadow(color: Theme.accent.opacity(0.6), radius: 30)
                     .id(step)
-                    .transition(reduceMotion ? .opacity : .scale(scale: 0.4).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .flip3D)
                 Text("Respira, scalda le spalle, tieni il telefono a portata di mano.")
                     .font(.footnote).foregroundStyle(Theme.secondaryText).multilineTextAlignment(.center).padding(.horizontal, 40)
             }

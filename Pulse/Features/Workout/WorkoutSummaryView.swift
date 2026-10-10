@@ -30,11 +30,10 @@ struct WorkoutSummaryView: View {
 
             VStack(spacing: 22) {
                 Spacer()
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 76)).foregroundStyle(Theme.accent)
+                MedalView()
+                    .frame(height: 190)
                     .scaleEffect(shown || reduceMotion ? 1 : 0.2)
                     .opacity(shown ? 1 : 0)
-                    .symbolEffect(.bounce, value: shown)
                     .animation(reduceMotion ? .none : Motion.bouncy, value: shown)
                 Text("Allenamento completato").font(.system(size: 28, weight: .bold, design: .rounded))
                 Text(summary.name).foregroundStyle(Theme.secondaryText)

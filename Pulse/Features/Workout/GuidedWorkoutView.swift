@@ -64,6 +64,7 @@ struct GuidedWorkoutView: View {
             .frame(maxWidth: .infinity, maxHeight: 230)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .opacity(session.phase == .rest ? 0.55 : 1)
+            .tilt3D()
         } else {
             Image(systemName: session.currentExercise?.muscle.symbol ?? "dumbbell.fill")
                 .font(.system(size: 70)).foregroundStyle(Theme.accent)
@@ -121,6 +122,7 @@ struct GuidedWorkoutView: View {
                     Circle().trim(from: 0, to: CGFloat(left / Double(max(session.phaseTotal, 1))))
                         .stroke(session.timeUp ? Theme.move : Theme.accent, style: StrokeStyle(lineWidth: 12, lineCap: .round))
                         .rotationEffect(.degrees(-90))
+                        .shadow(color: (session.timeUp ? Theme.move : Theme.accent).opacity(0.7), radius: 12)
                     VStack(spacing: 0) {
                         Text("\(session.currentSet?.reps ?? 0)")
                             .font(.system(size: 64, weight: .black, design: .rounded))
@@ -172,7 +174,7 @@ struct GuidedWorkoutView: View {
     private var finished: some View {
         VStack(spacing: 18) {
             Spacer()
-            Image(systemName: "flag.checkered").font(.system(size: 70)).foregroundStyle(Theme.accent).symbolEffect(.bounce)
+            MedalView().frame(height: 200)
             Text("Hai finito tutte le serie").font(.system(size: 26, weight: .bold, design: .rounded))
             Button(action: onFinish) {
                 Text("Salva e chiudi").font(.headline).foregroundStyle(.black)
