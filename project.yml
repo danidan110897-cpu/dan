@@ -1,6 +1,6 @@
 name: Pulse
 options:
-  bundleIdPrefix: com.dan
+  bundleIdPrefix: com.danielioja
   deploymentTarget:
     iOS: "18.0"
     watchOS: "11.0"
@@ -27,7 +27,7 @@ targets:
         embed: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.dan.pulse
+        PRODUCT_BUNDLE_IDENTIFIER: com.danielioja.pulse
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
@@ -45,7 +45,7 @@ targets:
       - target: Pulse
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.dan.pulse.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.danielioja.pulse.tests
         GENERATE_INFOPLIST_FILE: YES
   PulseWidgets:
     type: app-extension
@@ -59,7 +59,7 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.dan.pulse.widgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.danielioja.pulse.widgets
         SKIP_INSTALL: YES
   PulseWatch:
     type: application
@@ -71,10 +71,10 @@ targets:
         com.apple.developer.healthkit: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.dan.pulse.watchkitapp
+        PRODUCT_BUNDLE_IDENTIFIER: com.danielioja.pulse.watchkitapp
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Pulse
-        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.dan.pulse
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.danielioja.pulse
         INFOPLIST_KEY_WKRunsIndependentlyOfCompanionApp: YES
         INFOPLIST_KEY_NSHealthShareUsageDescription: Pulse legge battito e calorie per mostrarli durante l'allenamento.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Pulse salva i tuoi allenamenti in Salute.
