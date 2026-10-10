@@ -8,8 +8,11 @@ enum GeminiClient {
 
     /// Key baked into the build from Config/Secrets.xcconfig (never committed). Empty when the build has none.
     static var bundledKey: String {
-        let value = (Bundle.main.object(forInfoDictionaryKey: "GeminiAPIKey") as? String) ?? ""
-        return value.hasPrefix("AIza") ? value : ""
+        let value = ((Bundle.main.object(forInfoDictionaryKey: "GeminiAPIKey") as? String) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        // Empty, an unexpanded build variable or the example placeholder all mean "no key in this build".
+        if value.isEmpty || value.hasPrefix("$(") || value.contains("PASTE_YOUR_KEY") { return "" }
+        return value
     }
 
     /// A key typed in Settings wins; otherwise the one built into the app.
