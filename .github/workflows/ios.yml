@@ -1,0 +1,15 @@
+name: iOS build
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - run: >
+          xcodebuild build -project Pulse.xcodeproj -scheme Pulse
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
