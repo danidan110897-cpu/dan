@@ -94,6 +94,7 @@ struct WorkoutSessionView: View {
             link.activate()
             link.send(snapshot: s.snapshot)
             LiveBridge.onDone = { [weak s] in s?.primaryAction() }
+            link.onAction = { [weak s] in s?.primaryAction() }
             if !s.guided && s.completedSets == 0 { s.beginGuided() }
         }
         .onChange(of: scenePhase) { if scenePhase == .active { session.resync() } }
@@ -119,6 +120,7 @@ struct WorkoutSessionView: View {
         let saved = save && session.save(to: context)
         session.skipRest()
         LiveBridge.onDone = nil
+        Connectivity.shared.onAction = nil
         session.onUpdate = nil
         // An empty snapshot tells the Watch the workout is over.
         Connectivity.shared.send(snapshot: WorkoutSnapshot(title: "", restSeconds: 0, exercises: []))

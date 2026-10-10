@@ -9,6 +9,12 @@ struct WatchWorkoutView: View {
             Group {
                 if store.snapshot == nil {
                     waiting
+                } else if let g = store.snapshot?.guided {
+                    TabView {
+                        guidedPage(g)
+                        heartPage
+                    }
+                    .tabViewStyle(.verticalPage)
                 } else if store.isFinished {
                     finished
                 } else if let cur = store.current {
@@ -23,6 +29,38 @@ struct WatchWorkoutView: View {
         }
         .sensoryFeedback(.success, trigger: store.completionTick)
         .task { await health.start() }
+    }
+
+    private func guidedPage(_ g: GuidedState) -> some View {
+        TimelineView(.periodic(from: .now, by: 0.5)) { ctx in
+            let left = max(g.endDate.timeIntervalSince(ctx.date), 0)
+            let color = g.phase == "rest" ? WatchTheme.rest : WatchTheme.accent
+            Button { store.primaryAction() } label: {
+                VStack(spacing: 4) {
+                    Text(g.phase == "rest" ? "RECUPERO" : g.phase == "ready" ? "PREPARATI" : g.exercise)
+                        .font(.caption2.weight(.heavy)).foregroundStyle(.secondary).lineLimit(1)
+                    ZStack {
+                        Circle().stroke(color.opacity(0.2), lineWidth: 7)
+                        Circle().trim(from: 0, to: CGFloat(left / Double(max(g.total, 1))))
+                            .stroke(color, style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                        VStack(spacing: 0) {
+                            if g.phase == "work" {
+                                Text("\(g.reps)").font(.system(size: 40, weight: .black, design: .rounded))
+                                Text("\(g.weight.formatted()) kg").font(.caption2).foregroundStyle(.secondary)
+                            } else {
+                                Text("\(Int(ceil(left)))").font(.system(size: 40, weight: .black, design: .rounded))
+                                    .contentTransition(.numericText(countsDown: true))
+                            }
+                        }
+                    }
+                    .frame(width: 100, height: 100)
+                    Text(g.phase == "work" ? "Tocca: fatto" : g.phase == "rest" ? g.next : "Serie \(g.setIndex)/\(g.setCount)")
+                        .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
+                }
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private var waiting: some View {

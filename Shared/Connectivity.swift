@@ -10,6 +10,8 @@ final class Connectivity: NSObject, WCSessionDelegate, @unchecked Sendable {
     /// Set by each side. Always called on the main queue.
     var onSnapshot: ((WorkoutSnapshot) -> Void)?
     var onToggle: ((SetToggle) -> Void)?
+    /// The Watch (or phone) pressed the main button of the guided flow.
+    var onAction: (() -> Void)?
 
     private override init() { super.init() }
 
@@ -44,6 +46,18 @@ final class Connectivity: NSObject, WCSessionDelegate, @unchecked Sendable {
         }
     }
 
+    func sendAction() {
+        guard WCSession.default.activationState == .activated else { return }
+        let payload: [String: Any] = [WatchKey.action: Date().timeIntervalSince1970]
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(payload, replyHandler: nil) { _ in
+                WCSession.default.transferUserInfo(payload)
+            }
+        } else {
+            WCSession.default.transferUserInfo(payload)
+        }
+    }
+
     // MARK: WCSessionDelegate
 
     func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
@@ -65,6 +79,9 @@ final class Connectivity: NSObject, WCSessionDelegate, @unchecked Sendable {
         if let data = payload[WatchKey.snapshot] as? Data,
            let snapshot = try? decoder.decode(WorkoutSnapshot.self, from: data) {
             DispatchQueue.main.async { self.onSnapshot?(snapshot) }
+        }
+        if payload[WatchKey.action] != nil {
+            DispatchQueue.main.async { self.onAction?() }
         }
         if let data = payload[WatchKey.toggle] as? Data,
            let toggle = try? decoder.decode(SetToggle.self, from: data) {

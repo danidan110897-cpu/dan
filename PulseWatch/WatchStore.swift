@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import WatchKit
 
 @MainActor @Observable
 final class WatchStore {
@@ -8,6 +9,8 @@ final class WatchStore {
     var restTotal = 90
     var completionTick = 0
     private var restTask: Task<Void, Never>?
+    private var alertTask: Task<Void, Never>?
+    private var lastPhase: String?
 
     var current: (exercise: WorkoutSnapshot.Exercise, set: WorkoutSnapshot.WorkoutSet, index: Int)? {
         guard let snapshot else { return nil }
@@ -27,8 +30,9 @@ final class WatchStore {
             guard let self else { return }
             let before = self.doneCount
             withAnimation(.snappy) { self.snapshot = new }
-            // A set finished on the phone also starts the rest here.
-            if self.doneCount > before { self.startRest(seconds: new.restSeconds) }
+            self.followGuided(new.guided)
+            // A set finished on the phone also starts the rest here (the guided flow mirrors its own countdown).
+            if new.guided == nil, self.doneCount > before { self.startRest(seconds: new.restSeconds) }
         }
         link.activate()
     }
@@ -60,5 +64,32 @@ final class WatchStore {
     func skipRest() {
         restTask?.cancel()
         restRemaining = 0
+    }
+
+    /// Taps the wrist on every phase change and when a set's estimated time is over, so the screen lights up with the next step.
+    private func followGuided(_ g: GuidedState?) {
+        alertTask?.cancel()
+        guard let g else { lastPhase = nil; return }
+        if g.phase != lastPhase {
+            switch g.phase {
+            case "ready": WKInterfaceDevice.current().play(.directionUp)
+            case "work": WKInterfaceDevice.current().play(.start)
+            default: WKInterfaceDevice.current().play(.success)
+            }
+            lastPhase = g.phase
+        }
+        if g.phase == "work" {
+            let end = g.endDate
+            alertTask = Task {
+                let wait = end.timeIntervalSinceNow
+                if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+                if !Task.isCancelled { WKInterfaceDevice.current().play(.notification) }
+            }
+        }
+    }
+
+    func primaryAction() {
+        WKInterfaceDevice.current().play(.click)
+        Connectivity.shared.sendAction()
     }
 }

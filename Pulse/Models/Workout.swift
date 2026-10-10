@@ -35,7 +35,7 @@ final class WorkoutSession {
     var restRemaining = 0
     var restTotal: Int
     var prTrigger = 0
-    private var restEnd = Date()
+    private(set) var restEnd = Date()
     private var ticker: Task<Void, Never>?
 
     // Guided mode: the app walks set by set (get ready -> work -> rest -> next set) on its own.
@@ -127,7 +127,19 @@ final class WorkoutSession {
                 .init(id: ex.id, name: ex.name, sets: ex.sets.map {
                     .init(id: $0.id, weight: $0.weight, reps: $0.reps, isDone: $0.isDone)
                 })
-            }
+            },
+            guided: guidedState
+        )
+    }
+
+    private var guidedState: GuidedState? {
+        guard guided, phase != .idle, let ex = currentExercise, let set = currentSet else { return nil }
+        let name = switch phase { case .getReady: "ready"; case .work: "work"; default: "rest" }
+        return GuidedState(
+            phase: name, exercise: ex.name, setIndex: currentSetNumber, setCount: ex.sets.count,
+            reps: set.reps, weight: set.weight,
+            endDate: phase == .rest ? restEnd : phaseEnd, total: phase == .rest ? restTotal : phaseTotal,
+            next: upcomingDescription
         )
     }
 
@@ -227,6 +239,7 @@ final class WorkoutSession {
         guided = false
         phase = .idle
         PhaseAlerts.cancel()
+        onUpdate?()
     }
 
     /// The one action every surface (button, Lock Screen, Watch) maps to: move to the next step of the flow.
@@ -295,6 +308,7 @@ final class WorkoutSession {
         allDone = done
         PhaseAlerts.cancel()
         LiveActivityManager.shared.end()
+        onUpdate?()
     }
 
     private func restEnded() {
@@ -335,6 +349,7 @@ final class WorkoutSession {
     }
 
     private func updateActivity() {
+        onUpdate?()
         let (name, end, headline): (String, Date, String)
         switch phase {
         case .getReady:
