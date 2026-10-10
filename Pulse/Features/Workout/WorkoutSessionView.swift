@@ -95,6 +95,7 @@ struct WorkoutSessionView: View {
             link.send(snapshot: s.snapshot)
             LiveBridge.onDone = { [weak s] in s?.primaryAction() }
             link.onAction = { [weak s] in s?.primaryAction() }
+            if link.hasWatch { Task { await HealthStore.shared.launchWatchApp() } }
             if !s.guided && s.completedSets == 0 { s.beginGuided() }
         }
         .onChange(of: scenePhase) { if scenePhase == .active { session.resync() } }

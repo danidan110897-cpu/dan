@@ -1,7 +1,15 @@
 import SwiftUI
+import HealthKit
+import WatchKit
+
+/// Lets the iPhone launch the Watch app when a workout starts (HealthKit startWatchApp). The app itself starts the workout session on launch.
+final class WatchAppDelegate: NSObject, WKApplicationDelegate {
+    func handle(_ workoutConfiguration: HKWorkoutConfiguration) {}
+}
 
 @main
 struct PulseWatchApp: App {
+    @WKApplicationDelegateAdaptor(WatchAppDelegate.self) private var delegate
     @State private var store = WatchStore()
     @State private var health = HealthWorkoutManager()
 

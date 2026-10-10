@@ -189,6 +189,14 @@ final class HealthStore {
     }
 
     /// Used only when no Apple Watch is paired; otherwise the Watch records the workout with heart rate.
+    /// Opens the Pulse app on the paired Watch and starts its workout session, so wrist-raise brings the workout back up.
+    func launchWatchApp() async {
+        let config = HKWorkoutConfiguration()
+        config.activityType = .traditionalStrengthTraining
+        config.locationType = .indoor
+        try? await store.startWatchApp(toHandle: config)
+    }
+
     func saveWorkout(start: Date, end: Date) async {
         guard isAvailable, syncEnabled, end > start else { return }
         let config = HKWorkoutConfiguration()
