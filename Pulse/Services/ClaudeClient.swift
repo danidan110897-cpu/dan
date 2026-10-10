@@ -39,7 +39,14 @@ enum ClaudeClient {
         ["type": "image", "source": ["type": "base64", "media_type": "image/jpeg", "data": jpeg.base64EncodedString()]]
     }
 
+    /// Every cloud call has a hard ceiling so a stuck connection can never leave a spinner running forever.
     static func json(system: String, content: [[String: Any]], schema: [String: Any], maxTokens: Int = 2048) async throws -> [String: Any] {
+        try await RoutinePlanner.withTimeout(75) {
+            try await jsonUnbounded(system: system, content: content, schema: schema, maxTokens: maxTokens)
+        }
+    }
+
+    private static func jsonUnbounded(system: String, content: [[String: Any]], schema: [String: Any], maxTokens: Int) async throws -> [String: Any] {
         guard let key = KeychainStore.get(ClaudeGenerator.keychainAccount), !key.isEmpty else {
             if GeminiClient.hasKey { return try await GeminiClient.json(system: system, content: content, schema: schema) }
             throw GeneratorError.unavailable("Inserisci una chiave API in Impostazioni (quella gratuita di Google va bene).")

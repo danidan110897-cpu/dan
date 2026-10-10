@@ -57,7 +57,7 @@ enum GeminiClient {
         for model in models {
             var req = URLRequest(url: URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!)
             req.httpMethod = "POST"
-            req.timeoutInterval = 120
+            req.timeoutInterval = 60
             req.setValue(key, forHTTPHeaderField: "x-goog-api-key")
             req.setValue("application/json", forHTTPHeaderField: "content-type")
             req.httpBody = payloadData

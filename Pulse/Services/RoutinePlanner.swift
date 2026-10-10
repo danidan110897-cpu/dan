@@ -43,7 +43,7 @@ enum RoutinePlanner {
     }
 
     /// Returns the first of: the operation's result, or a timeout error. Does not wait for an operation that ignores cancellation.
-    static func withTimeout<T: Sendable>(_ seconds: Double, _ operation: @escaping @Sendable () async throws -> T) async throws -> T {
+    static func withTimeout<T>(_ seconds: Double, _ operation: @escaping () async throws -> T) async throws -> T {
         try await withCheckedThrowingContinuation { continuation in
             let once = Once()
             let work = Task {
