@@ -16,6 +16,7 @@ struct RootView: View {
         TabView {
             Tab("Oggi", systemImage: "flame.fill") { HomeView() }
             Tab("Progressi", systemImage: "chart.xyaxis.line") { ProgressTabView() }
+            Tab("Corpo", systemImage: "figure.arms.open") { BodyView() }
         }
     }
 }
