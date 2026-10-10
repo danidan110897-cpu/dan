@@ -5,6 +5,7 @@ struct AIRoutineView: View {
     let onSaved: (Routine) -> Void
 
     enum Engine: String, CaseIterable, Identifiable {
+        case auto = "Automatico"
         case rules = "Regole (offline)"
         case apple = "Apple Intelligence"
         case claude = "Claude"
@@ -16,10 +17,11 @@ struct AIRoutineView: View {
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
 
     @State private var request = GenerationRequest()
-    @State private var engine: Engine = .rules
+    @State private var engine: Engine = .auto
     @State private var loading = false
     @State private var error: String?
     @State private var plan: GeneratedPlan?
+    @State private var info: String?
 
     private var library: [LibraryEntry] {
         exercises.map { LibraryEntry(key: $0.key, name: $0.name, muscle: $0.muscle, equipment: $0.equipment) }
@@ -80,6 +82,9 @@ struct AIRoutineView: View {
                 if let error {
                     Text(error).font(.footnote).foregroundStyle(Theme.move)
                 }
+                if let info {
+                    Text(info).font(.footnote).foregroundStyle(.orange)
+                }
             } footer: {
                 Text(engineHint)
             }
@@ -124,19 +129,12 @@ struct AIRoutineView: View {
 
     private var engineHint: String {
         switch engine {
+        case .auto: "Userà: \(AIEngine.automatic.label). Se l'AI non risponde passa alle regole sul telefono."
         case .rules: "Schemi classici (Push/Pull/Gambe, Upper/Lower, Corpo intero). Non usa AI né internet."
-        case .apple: AppleGenerator.isAvailable
+        case .apple: AIEngine.appleStatus.isAvailable
             ? "Gira sul telefono: gratis e privato."
-            : "Non disponibile su questo iPhone (serve iOS 26 e Apple Intelligence attiva)."
+            : "Non disponibile: \(AIEngine.appleStatus.label)."
         case .claude: "Usa la tua chiave API di Anthropic (Impostazioni). Costa pochi centesimi a bozza."
-        }
-    }
-
-    private func makeGenerator() -> any WorkoutGenerator {
-        switch engine {
-        case .rules: return RuleBasedGenerator()
-        case .apple: return AppleGenerator()
-        case .claude: return ClaudeGenerator()
         }
     }
 
@@ -146,15 +144,22 @@ struct AIRoutineView: View {
 
     private func generate() {
         error = nil
+        info = nil
         loading = true
         let req = request
         let lib = library
-        let generator = makeGenerator()
+        let choice: AIEngine.Choice = switch engine {
+        case .auto: AIEngine.automatic
+        case .rules: .local
+        case .apple: .apple
+        case .claude: .claude
+        }
+        let allowFallback = engine == .auto
         Task {
             do {
-                let raw = try await generator.generate(req, library: lib)
-                let checked = PlanValidator.validate(raw, request: req, library: lib)
-                withAnimation(Motion.smooth) { plan = checked }
+                let outcome = try await RoutinePlanner.generate(req, library: lib, choice: choice, allowFallback: allowFallback)
+                if let reason = outcome.fallbackReason { info = "L'AI non ha risposto (\(reason)): ho usato le regole sul telefono." }
+                withAnimation(Motion.smooth) { plan = outcome.plan }
             } catch {
                 self.error = error.localizedDescription
             }
@@ -163,19 +168,7 @@ struct AIRoutineView: View {
     }
 
     private func save(_ plan: GeneratedPlan) {
-        var first: Routine?
-        for r in plan.routines {
-            let routine = Routine(name: r.name, restSeconds: request.goal == .strength ? 150 : 90)
-            context.insert(routine)
-            for (i, g) in r.exercises.enumerated() {
-                guard let ex = exercises.first(where: { $0.key == g.key }) else { continue }
-                let item = RoutineItem(order: i, exercise: ex, sets: g.sets, reps: g.reps)
-                item.note = g.note
-                routine.items.append(item)
-            }
-            if first == nil { first = routine }
-        }
-        try? context.save()
+        let first = RoutinePlanner.save(plan, restSeconds: request.goal == .strength ? 150 : 90, exercises: exercises, context: context)
         dismiss()
         if let first { onSaved(first) }
     }

@@ -28,6 +28,10 @@ enum PhotoStorage {
     private static var directory: URL {
         let dir = URL.documentsDirectory.appending(path: "ProgressPhotos", directoryHint: .isDirectory)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var url = dir
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true   // photos never go to iCloud backups
+        try? url.setResourceValues(values)
         return dir
     }
 

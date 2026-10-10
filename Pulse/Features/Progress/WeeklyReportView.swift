@@ -42,7 +42,7 @@ struct WeeklyReportView: View {
         .navigationTitle("Ultimi 7 giorni")
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Inviare i dati per l'analisi?", isPresented: $confirmSend, titleVisibility: .visible) {
-            Button("Invia e analizza") { runAnalysis(r) }
+            Button("Invia e analizza") { runAnalysis(r, useClaude: true) }
             Button("Annulla", role: .cancel) {}
         } message: {
             Text(includePhotos
@@ -98,18 +98,24 @@ struct WeeklyReportView: View {
     private func aiCard(_ r: WeeklyReport) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Analisi AI", systemImage: "sparkles").font(.headline)
-            if !ClaudeClient.hasKey {
-                Text("Per l'analisi della settimana inserisci la chiave API di Anthropic in Impostazioni. Il riepilogo qui sopra funziona anche senza.")
-                    .font(.footnote).foregroundStyle(Theme.secondaryText)
-            } else {
-                if photoPair != nil {
-                    Toggle("Includi il confronto tra le ultime due foto", isOn: $includePhotos).font(.subheadline)
-                }
-                Button { confirmSend = true } label: {
-                    HStack { if loading { ProgressView() }; Text(narrative == nil ? "Analizza la mia settimana" : "Analizza di nuovo") }
+            if AIEngine.appleStatus.isAvailable {
+                Button { runAnalysis(r, useClaude: false) } label: {
+                    HStack { if loading { ProgressView() }; Image(systemName: "apple.intelligence"); Text("Analizza sul telefono (gratis, privato)") }
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent).foregroundStyle(.black).disabled(loading)
+            } else {
+                Text("Apple Intelligence non disponibile (\(AIEngine.appleStatus.label)). Il riepilogo qui sopra funziona comunque, senza AI.")
+                    .font(.footnote).foregroundStyle(Theme.secondaryText)
+            }
+            if ClaudeClient.hasKey {
+                if photoPair != nil {
+                    Toggle("Con Claude: includi il confronto tra le ultime due foto", isOn: $includePhotos).font(.subheadline)
+                }
+                Button { confirmSend = true } label: {
+                    HStack { if loading { ProgressView() }; Text("Analizza con Claude") }.frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered).disabled(loading)
             }
             if let error { Text(error).font(.footnote).foregroundStyle(Theme.move) }
             if let n = narrative {
@@ -130,15 +136,17 @@ struct WeeklyReportView: View {
         .animation(Motion.smooth, value: narrative?.summary)
     }
 
-    private func runAnalysis(_ r: WeeklyReport) {
+    private func runAnalysis(_ r: WeeklyReport, useClaude: Bool) {
         loading = true
         error = nil
-        let pair = includePhotos ? photoPair : nil
+        let pair = (useClaude && includePhotos) ? photoPair : nil
         let stats = r.statsJSON
         let (before, after) = (pair?.before.filename, pair?.after.filename)
         Task {
             do {
-                narrative = try await PhotoAnalyzer.weeklyNarrative(statsJSON: stats, beforeFile: before, afterFile: after)
+                narrative = useClaude
+                    ? try await PhotoAnalyzer.weeklyNarrative(statsJSON: stats, beforeFile: before, afterFile: after)
+                    : try await AppleHelpers.narrative(statsJSON: stats)
             } catch {
                 self.error = error.localizedDescription
             }

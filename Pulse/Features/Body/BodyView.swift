@@ -101,8 +101,9 @@ struct BodyView: View {
                 Spacer()
                 row("Acqua", String(format: "%.1f L", a.waterLiters))
             }
-            Text("Obiettivo: \(store.profile.goal.label.lowercased()) (\(Int(store.profile.goal.adjustment * 100))% sul mantenimento)")
+            Text("Obiettivo: \(store.profile.goal.label.lowercased()) · \(a.calorieDelta >= 0 ? "+" : "")\(Int(a.calorieDelta)) kcal al giorno sul mantenimento (circa \(String(format: "%+.2f", a.expectedWeeklyChangeKg)) kg a settimana)")
                 .font(.footnote).foregroundStyle(Theme.secondaryText)
+            if let note = a.adjustmentNote { Text(note).font(.footnote).foregroundStyle(.orange) }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)

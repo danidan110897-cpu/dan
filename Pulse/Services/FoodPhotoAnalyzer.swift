@@ -86,6 +86,34 @@ enum FoodPhotoAnalyzer {
         return PhotoMealResult(items: items, note: (obj["note"] as? String) ?? "")
     }
 
+    private static let genericLabels = [
+        "food", "dish", "cuisine", "meal", "plate", "tableware", "kitchen", "container", "indoor", "outdoor", "people", "person",
+        "adult", "table", "furniture", "structure", "wood", "material", "fruit", "vegetable", "produce", "snack", "baked goods",
+        "bowl", "cup", "glass", "utensil", "cutlery", "fork", "spoon", "knife", "napkin", "textile", "paper", "pattern", "ingredient", "recipe",
+    ]
+
+    /// Free, private recognition on the phone: Vision labels the photo; Apple Intelligence (when available) turns the labels and
+    /// your note into foods with typical portions; otherwise the best labels are looked up in USDA with 100 g as a starting point.
+    static func analyzeLocal(jpeg: Data, hint: String) async throws -> PhotoMealResult {
+        let labels = await AppleHelpers.imageLabels(jpeg)
+        if AIEngine.appleStatus.isAvailable,
+           let items = try? await AppleHelpers.foods(labels: labels, hint: hint), !items.isEmpty {
+            return PhotoMealResult(items: items,
+                note: "Riconosciuto sul telefono con Apple Intelligence a partire dalle etichette della foto. Le porzioni sono tipiche, non misurate: correggile.")
+        }
+        let foods = labels.filter { l in !genericLabels.contains { l.lowercased() == $0 || l.lowercased().contains($0) } }.prefix(3)
+        guard !foods.isEmpty else {
+            return PhotoMealResult(items: [], note: "Non ho riconosciuto alimenti. Prova una foto dall'alto con più luce, oppure cerca l'alimento a mano.")
+        }
+        let items = foods.map {
+            PhotoFoodItem(name: $0.capitalized, usdaQuery: $0, grams: 100, confidence: "low",
+                          aiKcal100: 0, aiProtein100: 0, aiCarbs100: 0, aiFat100: 0)
+        }
+        let why = AIEngine.appleStatus.isAvailable ? "" : " (\(AIEngine.appleStatus.label))"
+        return PhotoMealResult(items: items,
+            note: "Riconoscimento di base sul telefono\(why). Ho messo 100 g a voce: indica tu i grammi e togli ciò che non c'è.")
+    }
+
     /// Picks USDA values when they agree with the AI estimate (within 40% on calories); otherwise keeps the AI estimate,
     /// because a mismatch usually means the search found a different food (raw vs cooked, dried vs fresh).
     static func resolve(_ item: PhotoFoodItem, usdaKey: String) async -> ResolvedFood {

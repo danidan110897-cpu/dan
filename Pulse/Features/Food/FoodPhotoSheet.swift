@@ -21,6 +21,13 @@ struct FoodPhotoSheet: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("usdaKey") private var usdaKey = "DEMO_KEY"
 
+    enum Method: String, CaseIterable, Identifiable {
+        case onDevice = "Sul telefono (gratis)"
+        case claude = "Claude (più preciso)"
+        var id: String { rawValue }
+    }
+
+    @State private var method: Method = .onDevice
     @State private var picked: PhotosPickerItem?
     @State private var showCamera = false
     @State private var imageData: Data?
@@ -37,13 +44,20 @@ struct FoodPhotoSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                if !ClaudeClient.hasKey {
-                    Section {
-                        Label("Per riconoscere il piatto serve la chiave API di Anthropic: inseriscila in Impostazioni.", systemImage: "key")
-                            .font(.footnote).foregroundStyle(Theme.secondaryText)
+                Section {
+                    if ClaudeClient.hasKey {
+                        Picker("Metodo", selection: $method) {
+                            ForEach(Method.allCases) { Text($0.rawValue).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
                     }
-                    .listRowBackground(Theme.card)
+                    Label(method == .onDevice
+                          ? "La foto resta sul telefono. \(AIEngine.appleStatus.isAvailable ? "Uso Apple Intelligence." : "Apple Intelligence non disponibile: riconoscimento di base.")"
+                          : "La foto viene inviata ad Anthropic con la tua chiave: stima più precisa di cibi e porzioni.",
+                          systemImage: method == .onDevice ? "lock.shield" : "paperplane")
+                        .font(.footnote).foregroundStyle(Theme.secondaryText)
                 }
+                .listRowBackground(Theme.card)
 
                 Section {
                     if let imageData, let image = UIImage(data: imageData) {
@@ -67,9 +81,9 @@ struct FoodPhotoSheet: View {
                 }
                 .listRowBackground(Theme.card)
 
-                if imageData != nil && ClaudeClient.hasKey {
+                if imageData != nil {
                     Section {
-                        Button { confirmSend = true } label: {
+                        Button { if method == .claude { confirmSend = true } else { analyze() } } label: {
                             HStack { if loading { ProgressView() }; Image(systemName: "sparkles"); Text(analyzed ? "Analizza di nuovo" : "Analizza il piatto") }
                                 .frame(maxWidth: .infinity)
                         }
@@ -181,7 +195,9 @@ struct FoodPhotoSheet: View {
         let hintText = hint
         Task {
             do {
-                let result = try await FoodPhotoAnalyzer.analyze(jpeg: imageData, hint: hintText)
+                let result = method == .claude
+                    ? try await FoodPhotoAnalyzer.analyze(jpeg: imageData, hint: hintText)
+                    : try await FoodPhotoAnalyzer.analyzeLocal(jpeg: imageData, hint: hintText)
                 var built: [Row] = []
                 for item in result.items {
                     let resolved = await FoodPhotoAnalyzer.resolve(item, usdaKey: key)

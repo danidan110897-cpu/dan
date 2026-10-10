@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("usdaKey") private var usdaKey = "DEMO_KEY"
     @AppStorage("playlistURL") private var playlistURL = ""
     @AppStorage("photoReminder") private var photoReminder = false
+    @AppStorage("appLock") private var appLock = false
     @State private var claudeKey = KeychainStore.get(ClaudeGenerator.keychainAccount) ?? ""
     @State private var exportURL: URL?
     @State private var exportError: String?
@@ -16,6 +17,23 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    LabeledContent("Apple Intelligence", value: AIEngine.appleStatus.label)
+                    LabeledContent("In uso automaticamente", value: AIEngine.automatic.label)
+                } header: {
+                    Text("Intelligenza artificiale")
+                } footer: {
+                    Text("L'app controlla da sola se questo iPhone supporta Apple Intelligence e se è attiva. Se non lo è, usa Claude (se hai inserito una chiave) oppure le regole sul telefono, che sono gratuite. Per ora Apple Intelligence legge solo testo, quindi le foto si analizzano con Claude.")
+                }
+
+                Section {
+                    Toggle("Blocca con Face ID o codice", isOn: $appLock)
+                } header: {
+                    Text("Privacy")
+                } footer: {
+                    Text("I tuoi dati restano su questo iPhone. Le foto non vanno nella libreria Foto né nei backup iCloud. Dati e foto escono dal telefono solo se scegli un servizio esterno (ricerca cibi, analisi con Claude, Salute).")
+                }
+
                 Section {
                     Toggle("Scrivi cibo, peso e allenamenti in Salute", isOn: $healthSync)
                 } header: {

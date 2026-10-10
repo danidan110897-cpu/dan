@@ -81,6 +81,11 @@ struct BodyProfile: Codable, Equatable {
     var activity: ActivityLevel = .moderate
     var goal: Goal = .maintain
     var bodyType: BodyType = .mesomorph
+    /// Body-fat percentage estimated from the first photo (midpoint of the AI range). Optional so older saved profiles still load.
+    var photoBodyFat: Double?
+    var trainingDays: Int?
+    var trainingLevel: String?
+    var trainingPlace: String?
 }
 
 struct WeightEntry: Codable, Identifiable, Equatable {
@@ -113,7 +118,49 @@ struct BodyAnalysis {
     }
 
     var tdee: Double { bmr * p.activity.factor }
-    var targetCalories: Double { tdee * (1 + p.goal.adjustment) }
+
+    /// Weekly body-weight change the goal aims for, in kg (negative = loss). Leaner people lose more slowly to protect muscle.
+    var weeklyRateKg: Double {
+        switch p.goal {
+        case .maintain: return 0
+        case .bulk: return p.weightKg * 0.0025
+        case .cut:
+            let high = p.sex == .male ? bodyFat.percent > 20 : bodyFat.percent > 30
+            return -p.weightKg * (high ? 0.0075 : 0.005)
+        }
+    }
+
+    /// Why no deficit is calculated (minors, already low BMI), otherwise nil.
+    private var cutBlocked: String? {
+        guard p.goal == .cut else { return nil }
+        if p.age < 18 { return "Sotto i 18 anni non calcoliamo un deficit: parlane con un medico o un allenatore." }
+        if bmi < 18.5 { return "Il tuo BMI è già basso: non calcoliamo un deficit. Parlane con un medico." }
+        return nil
+    }
+
+    private var calorieFloor: Double { max(bmr, p.sex == .male ? 1500 : 1200) }
+
+    /// Daily kcal added to (or removed from) maintenance, capped at -25% / +15%.
+    var dailyAdjustment: Double {
+        if cutBlocked != nil { return 0 }
+        let raw = weeklyRateKg * 7700 / 7
+        return min(max(raw, -0.25 * tdee), 0.15 * tdee)
+    }
+
+    var targetCalories: Double {
+        let t = tdee + dailyAdjustment
+        return p.goal == .cut && cutBlocked == nil ? max(t, min(calorieFloor, tdee)) : t
+    }
+
+    /// Target minus maintenance (negative = deficit).
+    var calorieDelta: Double { targetCalories - tdee }
+    var expectedWeeklyChangeKg: Double { calorieDelta * 7 / 7700 }
+
+    var adjustmentNote: String? {
+        if let blocked = cutBlocked { return blocked }
+        if p.goal == .cut && tdee + dailyAdjustment < calorieFloor { return "Ho limitato il deficit per non scendere sotto un minimo sicuro di calorie." }
+        return nil
+    }
 
     /// US Navy circumference method when measurements allow it, otherwise Deurenberg from BMI.
     var bodyFat: (percent: Double, method: String) {
@@ -127,6 +174,7 @@ struct BodyAnalysis {
                 return (clamp(v), "Misure (metodo US Navy)")
             }
         }
+        if let f = p.photoBodyFat { return (clamp(f), "Stima dalla foto (AI, margine di alcuni punti)") }
         let v = 1.20 * bmi + 0.23 * Double(p.age) - 10.8 * (p.sex == .male ? 1 : 0) - 5.4
         return (clamp(v), "Stima da BMI (meno precisa)")
     }
@@ -148,7 +196,11 @@ struct BodyAnalysis {
 
     var idealWeightRange: ClosedRange<Double> { (18.5 * heightM * heightM)...(24.9 * heightM * heightM) }
 
-    var proteinG: Double { p.weightKg * (p.goal == .cut ? 2.2 : 1.8) }
+    /// Based on lean mass (2.4 g/kg in a deficit, 2.0 otherwise), kept between 1.6 and 2.4 g per kg of body weight.
+    var proteinG: Double {
+        let perLean = p.goal == .cut ? 2.4 : 2.0
+        return min(max(leanMassKg * perLean, p.weightKg * 1.6), p.weightKg * 2.4)
+    }
     var fatG: Double { max(p.weightKg * 0.9, 40) }
     var carbsG: Double { max((targetCalories - proteinG * 4 - fatG * 9) / 4, 0) }
     var waterLiters: Double { p.weightKg * 0.035 }

@@ -163,3 +163,44 @@ struct GuideAndReportTests {
         #expect(report.tips.count >= 2)
     }
 }
+
+struct CalorieGoalTests {
+    private func profile(goal: Goal, age: Int = 30, weight: Double = 90, bmiHeight: Double = 180) -> BodyProfile {
+        var p = BodyProfile()
+        p.sex = .male; p.age = age; p.heightCm = bmiHeight; p.weightKg = weight; p.goal = goal
+        return p
+    }
+
+    @Test func cuttingCreatesAModerateDeficit() {
+        let a = BodyAnalysis(p: profile(goal: .cut))
+        #expect(a.calorieDelta < 0)
+        #expect(a.calorieDelta >= -0.25 * a.tdee - 1)
+        #expect(a.expectedWeeklyChangeKg < 0)
+    }
+
+    @Test func bulkingCreatesASmallSurplus() {
+        let a = BodyAnalysis(p: profile(goal: .bulk))
+        #expect(a.calorieDelta > 0)
+        #expect(a.calorieDelta <= 0.15 * a.tdee + 1)
+    }
+
+    @Test func noDeficitForMinorsOrLowBMI() {
+        let minor = BodyAnalysis(p: profile(goal: .cut, age: 16))
+        #expect(minor.calorieDelta == 0 && minor.adjustmentNote != nil)
+        let thin = BodyAnalysis(p: profile(goal: .cut, weight: 55))
+        #expect(thin.calorieDelta == 0 && thin.adjustmentNote != nil)
+    }
+
+    @Test func photoEstimateIsUsedWhenThereAreNoMeasurements() {
+        var p = profile(goal: .maintain)
+        p.photoBodyFat = 22
+        let fat = BodyAnalysis(p: p).bodyFat
+        #expect(fat.percent == 22 && fat.method.contains("foto"))
+    }
+
+    @Test func leanerPeopleCutMoreSlowly() {
+        var lean = profile(goal: .cut); lean.photoBodyFat = 12
+        var heavy = profile(goal: .cut); heavy.photoBodyFat = 28
+        #expect(abs(BodyAnalysis(p: lean).weeklyRateKg) < abs(BodyAnalysis(p: heavy).weeklyRateKg))
+    }
+}

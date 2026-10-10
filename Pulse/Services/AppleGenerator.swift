@@ -5,14 +5,7 @@ import FoundationModels
 
 /// On-device generation with Apple Intelligence. Needs iOS 26 and a supported iPhone; otherwise it reports itself unavailable.
 struct AppleGenerator: WorkoutGenerator {
-    static var isAvailable: Bool {
-        #if canImport(FoundationModels)
-        if #available(iOS 26.0, *) {
-            if case .available = SystemLanguageModel.default.availability { return true }
-        }
-        #endif
-        return false
-    }
+    static var isAvailable: Bool { AIEngine.appleStatus.isAvailable }
 
     func generate(_ request: GenerationRequest, library: [LibraryEntry]) async throws -> GeneratedPlan {
         #if canImport(FoundationModels)

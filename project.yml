@@ -38,6 +38,7 @@ targets:
         INFOPLIST_KEY_NSHealthShareUsageDescription: Pulse legge passi, sonno, HRV e battito per calcolare il tuo recupero.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Pulse salva in Salute cibo, peso e allenamenti.
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
+        INFOPLIST_KEY_NSFaceIDUsageDescription: Pulse usa Face ID per proteggere i tuoi dati se attivi il blocco.
   PulseTests:
     type: bundle.unit-test
     platform: iOS

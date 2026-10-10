@@ -14,14 +14,24 @@ final class Router {
 struct PulseApp: App {
     @State private var router = Router()
     @State private var profile = ProfileStore()
+    @State private var lock = AppLock()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(router)
-                .environment(profile)
-                .preferredColorScheme(.dark)
-                .tint(Theme.accent)
+            ZStack {
+                RootView()
+                    .environment(router)
+                    .environment(profile)
+                if lock.isLocked { LockOverlay(lock: lock).zIndex(1) }
+            }
+            .preferredColorScheme(.dark)
+            .tint(Theme.accent)
+            .task { lock.lockIfNeeded(); await lock.unlock() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .background { lock.lockIfNeeded() }
+                if phase == .active { Task { await lock.unlock() } }
+            }
         }
         .modelContainer(for: [
             Exercise.self, Routine.self, RoutineItem.self,
