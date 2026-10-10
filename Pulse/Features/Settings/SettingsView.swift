@@ -104,9 +104,9 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { Button("Fine") { dismiss() } }
             .confirmationDialog("Cancellare tutti i dati?", isPresented: $confirmReset, titleVisibility: .visible) {
-                Button("Cancella allenamenti, cibo e foto", role: .destructive) { reset() }
+                Button("Cancella tutto e ricomincia", role: .destructive) { reset() }
             } message: {
-                Text("Routine, cronologia, diario e foto vengono eliminati da questo iPhone. Non si può annullare.")
+                Text("Routine, cronologia, diario e foto vengono eliminati da questo iPhone. Poi l'app si chiude: riaprila e rifai l'onboarding. Non si può annullare.")
             }
         }
     }
@@ -133,6 +133,10 @@ struct SettingsView: View {
         }
         try? context.delete(model: ProgressPhoto.self)
         try? context.save()
+        // Back to a clean start: body profile, weight history and onboarding.
+        UserDefaults.standard.removeObject(forKey: "pulse.body.v1")
+        UserDefaults.standard.set(false, forKey: "onboarded")
+        exit(0)
     }
 }
 

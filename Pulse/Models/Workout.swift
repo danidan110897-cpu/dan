@@ -35,7 +35,23 @@ final class WorkoutSession {
     var restRemaining = 0
     var restTotal: Int
     var prTrigger = 0
-    private var restTask: Task<Void, Never>?
+    private var restEnd = Date()
+    private var ticker: Task<Void, Never>?
+
+    // Guided mode: the app walks set by set (get ready -> work -> rest -> next set) on its own.
+    enum Phase: Equatable { case idle, getReady, work, rest }
+    var guided = false
+    var phase: Phase = .idle
+    var phaseEnd = Date()
+    var phaseTotal = 1
+    var timeUp = false
+    var allDone = false
+    /// When on, a set is marked done by itself once its estimated time is over.
+    var autoComplete = false
+    var startTrigger = 0
+    var timeUpTrigger = 0
+    /// Average seconds per repetition (controlled tempo), used to estimate how long a set lasts.
+    static let secondsPerRep = 3.5
 
     /// Called after any change so the Watch link can push a fresh snapshot.
     var onUpdate: (() -> Void)?
@@ -141,6 +157,7 @@ final class WorkoutSession {
             set.isPR = false
         }
         exercises[e].sets[s] = set
+        if guided, set.isDone { afterGuidedSet() }
     }
 
     func addSet(to exerciseID: UUID) {
@@ -151,45 +168,195 @@ final class WorkoutSession {
     }
 
     func startRest(seconds: Int) {
-        restTask?.cancel()
         restTotal = seconds
+        restEnd = Date().addingTimeInterval(TimeInterval(seconds))
         restRemaining = seconds
         updateActivity()
-        restTask = Task { [weak self] in
-            while let self, self.restRemaining > 0 {
-                try? await Task.sleep(for: .seconds(1))
-                if Task.isCancelled { return }
-                self.restRemaining -= 1
-            }
-            LiveActivityManager.shared.end()
-        }
+        let next = upcomingDescription
+        PhaseAlerts.schedule(title: "Recupero finito", body: next, after: seconds)
+        startTicker()
     }
 
     func adjustRest(by delta: Int) {
-        restRemaining = max(0, restRemaining + delta)
+        restEnd = restEnd.addingTimeInterval(TimeInterval(delta))
+        restRemaining = max(0, Int(ceil(restEnd.timeIntervalSinceNow)))
         restTotal = max(restTotal, restRemaining)
-        if restRemaining > 0 { updateActivity() } else { LiveActivityManager.shared.end() }
+        if restRemaining > 0 {
+            updateActivity()
+            PhaseAlerts.schedule(title: "Recupero finito", body: upcomingDescription, after: restRemaining)
+        } else {
+            restEnded()
+        }
     }
 
     func skipRest() {
-        restTask?.cancel()
+        guard restRemaining > 0 else { return }
         restRemaining = 0
+        PhaseAlerts.cancel()
+        if guided, phase == .rest, cursor != nil { enterGetReady(seconds: 3) } else { LiveActivityManager.shared.end() }
+    }
+
+    // MARK: Guided flow
+
+    /// First set that is not done yet, in routine order.
+    var cursor: (e: Int, s: Int)? {
+        for (e, ex) in exercises.enumerated() {
+            if let s = ex.sets.firstIndex(where: { !$0.isDone }) { return (e, s) }
+        }
+        return nil
+    }
+
+    var currentExercise: SessionExercise? { cursor.map { exercises[$0.e] } }
+    var currentSet: SessionSet? { cursor.map { exercises[$0.e].sets[$0.s] } }
+    var currentSetNumber: Int { cursor.map { $0.s + 1 } ?? 0 }
+
+    var upcomingDescription: String {
+        guard let c = cursor else { return "Allenamento finito" }
+        let ex = exercises[c.e]
+        return "Prossima: \(ex.name), serie \(c.s + 1)/\(ex.sets.count)"
+    }
+
+    func beginGuided() {
+        guided = true
+        allDone = false
+        Task { await PhaseAlerts.requestPermission() }
+        if cursor == nil { endGuided(allDone: true) } else { enterGetReady(seconds: 5) }
+    }
+
+    func stopGuided() {
+        guided = false
+        phase = .idle
+        PhaseAlerts.cancel()
+    }
+
+    /// The one action every surface (button, Lock Screen, Watch) maps to: move to the next step of the flow.
+    func primaryAction() {
+        switch phase {
+        case .getReady: startWork()
+        case .work: completeWork()
+        case .rest: skipRest()
+        case .idle: break
+        }
+    }
+
+    func completeWork() {
+        guard phase == .work, let c = cursor else { return }
+        toggle(exerciseID: exercises[c.e].id, setID: exercises[c.e].sets[c.s].id)
+    }
+
+    func nudge(weight delta: Double = 0, reps: Int = 0) {
+        guard let c = cursor else { return }
+        exercises[c.e].sets[c.s].weight = max(0, exercises[c.e].sets[c.s].weight + delta)
+        exercises[c.e].sets[c.s].reps = max(1, exercises[c.e].sets[c.s].reps + reps)
+        onUpdate?()
+    }
+
+    /// Call when the app comes back to the foreground: timers are date based, so just catch up.
+    func resync() {
+        if tick() { startTicker() }
+    }
+
+    private func enterGetReady(seconds: Int) {
+        phase = .getReady
+        phaseTotal = seconds
+        phaseEnd = Date().addingTimeInterval(TimeInterval(seconds))
+        timeUp = false
+        updateActivity()
+        startTicker()
+    }
+
+    private func startWork() {
+        guard guided, let c = cursor else { endGuided(allDone: true); return }
+        let reps = exercises[c.e].sets[c.s].reps
+        let seconds = max(10, Int((Double(reps) * Self.secondsPerRep).rounded()) + 3)
+        phase = .work
+        phaseTotal = seconds
+        phaseEnd = Date().addingTimeInterval(TimeInterval(seconds))
+        timeUp = false
+        startTrigger += 1
+        updateActivity()
+        if !autoComplete {
+            PhaseAlerts.schedule(title: "Tempo!", body: "Finita la serie? Premi Fatto.", after: seconds)
+        }
+        startTicker()
+    }
+
+    private func afterGuidedSet() {
+        if cursor == nil {
+            endGuided(allDone: true)
+        } else {
+            phase = .rest
+        }
+    }
+
+    private func endGuided(allDone done: Bool) {
+        phase = .idle
+        restRemaining = 0
+        allDone = done
+        PhaseAlerts.cancel()
         LiveActivityManager.shared.end()
     }
 
+    private func restEnded() {
+        restRemaining = 0
+        if guided, phase == .rest, cursor != nil { enterGetReady(seconds: 5) } else { LiveActivityManager.shared.end() }
+    }
+
+    private func startTicker() {
+        ticker?.cancel()
+        ticker = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard let self else { return }
+                if !self.tick() { return }
+            }
+        }
+    }
+
+    /// Advances date-based timers. Returns whether anything is still running.
+    @discardableResult
+    private func tick() -> Bool {
+        if restRemaining > 0 {
+            let left = max(0, Int(ceil(restEnd.timeIntervalSinceNow)))
+            if left != restRemaining { restRemaining = left }
+            if left == 0 { restEnded() }
+        }
+        let now = Date()
+        if guided {
+            if phase == .getReady, now >= phaseEnd {
+                startWork()
+            } else if phase == .work, now >= phaseEnd, !timeUp {
+                timeUp = true
+                timeUpTrigger += 1
+                if autoComplete { completeWork() }
+            }
+        }
+        return restRemaining > 0 || (guided && (phase == .getReady || phase == .work))
+    }
+
     private func updateActivity() {
+        let (name, end, headline): (String, Date, String)
+        switch phase {
+        case .getReady:
+            (name, end, headline) = ("ready", phaseEnd, currentExercise.map { "Preparati: \($0.name)" } ?? title)
+        case .work:
+            let reps = currentSet?.reps ?? 0
+            let ex = currentExercise
+            (name, end, headline) = ("work", phaseEnd, "\(ex?.name ?? title) · serie \(currentSetNumber)/\(ex?.sets.count ?? 0) · \(reps) rip")
+        default:
+            (name, end, headline) = ("rest", restEnd, cursor == nil ? title : upcomingDescription)
+        }
         LiveActivityManager.shared.startOrUpdate(
-            workout: title,
-            endDate: Date().addingTimeInterval(TimeInterval(restRemaining)),
-            done: completedSets,
-            total: totalSets
+            workout: title, phase: name, headline: headline, endDate: end, done: completedSets, total: totalSets
         )
     }
 
     /// Saves completed sets as a WorkoutLog. Returns false when nothing was completed.
     @discardableResult
     func save(to context: ModelContext) -> Bool {
-        skipRest()
+        stopGuided()
+        restRemaining = 0
+        LiveActivityManager.shared.end()
         var entries: [LogEntry] = []
         for (i, ex) in exercises.enumerated() {
             let done = ex.sets.filter(\.isDone)

@@ -1,6 +1,7 @@
 import SwiftUI
 import WidgetKit
 import ActivityKit
+import AppIntents
 
 @main
 struct PulseWidgetsBundle: WidgetBundle {
@@ -13,52 +14,86 @@ struct RestLiveActivity: Widget {
     private let lime = Color(red: 0.78, green: 1.0, blue: 0.25)
     private let blue = Color(red: 0.35, green: 0.80, blue: 1.0)
 
+    private func label(_ phase: String) -> String {
+        switch phase {
+        case "work": "Serie in corso"
+        case "ready": "Preparati"
+        default: "Recupero"
+        }
+    }
+
+    private func icon(_ phase: String) -> String {
+        switch phase {
+        case "work": "figure.strengthtraining.traditional"
+        case "ready": "hourglass"
+        default: "timer"
+        }
+    }
+
+    private func tint(_ phase: String) -> Color { phase == "rest" ? blue : lime }
+
+    private func clock(_ state: RestAttributes.ContentState, size: CGFloat) -> some View {
+        Text(timerInterval: Date.now...max(state.endDate, Date.now), countsDown: true)
+            .font(.system(size: size, weight: .bold, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(tint(state.phase))
+            .multilineTextAlignment(.trailing)
+    }
+
+    private func doneButton(_ state: RestAttributes.ContentState) -> some View {
+        Button(intent: CompleteSetIntent()) {
+            Label("Fatto", systemImage: "checkmark")
+                .font(.headline).foregroundStyle(.black)
+                .frame(maxWidth: .infinity).padding(.vertical, 8)
+                .background(lime, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RestAttributes.self) { context in
-            HStack(spacing: 16) {
-                Image(systemName: "timer").font(.title).foregroundStyle(blue)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Recupero").font(.headline)
-                    Text("\(context.attributes.workoutName) · serie \(context.state.setsDone)/\(context.state.setsTotal)")
-                        .font(.caption).foregroundStyle(.secondary)
+            let state = context.state
+            VStack(spacing: 10) {
+                HStack(spacing: 14) {
+                    Image(systemName: icon(state.phase)).font(.title).foregroundStyle(tint(state.phase))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(label(state.phase)).font(.headline)
+                        Text(state.headline.isEmpty ? context.attributes.workoutName : state.headline)
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text("Serie totali \(state.setsDone)/\(state.setsTotal)").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    clock(state, size: 34).frame(width: 90, alignment: .trailing)
                 }
-                Spacer()
-                Text(timerInterval: Date.now...max(context.state.endDate, Date.now), countsDown: true)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(lime)
-                    .frame(width: 90, alignment: .trailing)
+                if state.phase == "work" { doneButton(state) }
             }
             .padding()
             .activityBackgroundTint(.black.opacity(0.85))
         } dynamicIsland: { context in
-            DynamicIsland {
+            let state = context.state
+            return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Image(systemName: "timer").font(.title2).foregroundStyle(blue)
+                    Image(systemName: icon(state.phase)).font(.title2).foregroundStyle(tint(state.phase))
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(timerInterval: Date.now...max(context.state.endDate, Date.now), countsDown: true)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(lime)
-                        .frame(width: 80, alignment: .trailing)
+                    clock(state, size: 28).frame(width: 80, alignment: .trailing)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text("Recupero").font(.headline)
+                    Text(label(state.phase)).font(.headline)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text("\(context.attributes.workoutName) · serie \(context.state.setsDone)/\(context.state.setsTotal)")
-                        .font(.caption).foregroundStyle(.secondary)
+                    VStack(spacing: 6) {
+                        Text(state.headline.isEmpty ? context.attributes.workoutName : state.headline)
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        if state.phase == "work" { doneButton(state) }
+                    }
                 }
             } compactLeading: {
-                Image(systemName: "timer").foregroundStyle(blue)
+                Image(systemName: icon(state.phase)).foregroundStyle(tint(state.phase))
             } compactTrailing: {
-                Text(timerInterval: Date.now...max(context.state.endDate, Date.now), countsDown: true)
-                    .monospacedDigit()
-                    .frame(width: 44)
-                    .foregroundStyle(lime)
+                clock(state, size: 14).frame(width: 44)
             } minimal: {
-                Image(systemName: "timer").foregroundStyle(blue)
+                Image(systemName: icon(state.phase)).foregroundStyle(tint(state.phase))
             }
         }
     }

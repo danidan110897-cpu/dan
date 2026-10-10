@@ -6,6 +6,7 @@ struct WorkoutSessionView: View {
     @State private var showConfetti = false
     @State private var showFinish = false
     @State private var finishedSummary: WorkoutSummary?
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
@@ -15,6 +16,9 @@ struct WorkoutSessionView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
+            if session.guided {
+                GuidedWorkoutView(session: session) { finish(save: true) }
+            } else {
             ScrollView {
                 VStack(spacing: 16) {
                     summary
@@ -33,8 +37,9 @@ struct WorkoutSessionView: View {
                 .padding(.bottom, session.isResting ? 140 : 32)
             }
             .scrollDismissesKeyboard(.interactively)
+            }
 
-            if session.isResting {
+            if session.isResting && !session.guided {
                 RestTimerBar(session: session)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.horizontal, 16)
@@ -53,6 +58,13 @@ struct WorkoutSessionView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Termina") { showFinish = true }.fontWeight(.semibold)
+            }
+            ToolbarItem(placement: .topBarLeading) {
+                Button(session.guided ? "Lista" : "Guidato", systemImage: session.guided ? "list.bullet" : "play.circle.fill") {
+                    withAnimation(Motion.smooth) {
+                        if session.guided { session.stopGuided() } else { session.beginGuided() }
+                    }
+                }
             }
             ToolbarItem(placement: .topBarTrailing) { MusicMenu() }
             ToolbarItemGroup(placement: .keyboard) {
@@ -81,7 +93,10 @@ struct WorkoutSessionView: View {
             link.onToggle = { s.apply($0) }
             link.activate()
             link.send(snapshot: s.snapshot)
+            LiveBridge.onDone = { [weak s] in s?.primaryAction() }
+            if !s.guided && s.completedSets == 0 { s.beginGuided() }
         }
+        .onChange(of: scenePhase) { if scenePhase == .active { session.resync() } }
         .onChange(of: session.prTrigger) {
             showConfetti = false
             Task {
@@ -100,8 +115,10 @@ struct WorkoutSessionView: View {
             sets: session.completedSets,
             records: session.exercises.filter { $0.sets.contains { $0.isPR } }.map(\.name)
         )
+        session.stopGuided()
         let saved = save && session.save(to: context)
         session.skipRest()
+        LiveBridge.onDone = nil
         session.onUpdate = nil
         // An empty snapshot tells the Watch the workout is over.
         Connectivity.shared.send(snapshot: WorkoutSnapshot(title: "", restSeconds: 0, exercises: []))
