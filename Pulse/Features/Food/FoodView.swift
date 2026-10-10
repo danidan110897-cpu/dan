@@ -226,11 +226,11 @@ private struct EntryEditor: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Salva") {
                         guard grams > 0, entry.grams > 0 else { return }
-                        let f = grams / entry.grams
-                        entry.kcal *= f
-                        entry.protein *= f
-                        entry.carbs *= f
-                        entry.fat *= f
+                        let ratio = grams / entry.grams
+                        entry.kcal *= ratio
+                        entry.protein *= ratio
+                        entry.carbs *= ratio
+                        entry.fat *= ratio
                         entry.grams = grams
                         let id = entry.uid
                         let (date, k, p, c, f) = (entry.date, entry.kcal, entry.protein, entry.carbs, entry.fat)

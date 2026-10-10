@@ -16,13 +16,15 @@ jobs:
       - run: brew install xcodegen
       - run: xcodegen generate
       - name: Build
-        run: >
-          xcodebuild build -project Pulse.xcodeproj -scheme Pulse
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO
+        run: |
+          set -o pipefail
+          xcodebuild build -project Pulse.xcodeproj -scheme Pulse \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log | tail -n 3 || { echo '--- ERRORS ---'; grep -E 'error:' build.log | sort -u | head -40; exit 1; }
       - name: Test
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in d.items() if 'iOS' in k for x in v if 'iPhone' in x['name']))")
+          set -o pipefail
           xcodebuild test -project Pulse.xcodeproj -scheme Pulse \
             -destination "platform=iOS Simulator,id=$UDID" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee test.log | tail -n 3 || { echo '--- ERRORS ---'; grep -E 'error:|failed|Test Case.*failed|✘' test.log | sort -u | head -60; exit 1; }
