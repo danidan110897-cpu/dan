@@ -34,6 +34,7 @@ targets:
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_CFBundleDisplayName: Pulse
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_NSCameraUsageDescription: Pulse usa la fotocamera per leggere i codici a barre dei prodotti.
         INFOPLIST_KEY_NSHealthShareUsageDescription: Pulse legge passi, sonno, HRV e battito per calcolare il tuo recupero.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Pulse salva in Salute cibo, peso e allenamenti.
