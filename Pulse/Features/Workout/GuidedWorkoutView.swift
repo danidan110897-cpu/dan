@@ -9,6 +9,7 @@ struct GuidedWorkoutView: View {
     @State private var showEnd = false
     @State private var editing: Field?
     @State private var typed = ""
+    @AppStorage("weightStep") private var weightStep = 2.5
 
     private enum Field: Identifiable {
         case weight, reps
@@ -105,13 +106,25 @@ struct GuidedWorkoutView: View {
 
     private var target: some View {
         let set = session.currentSet
-        return HStack(spacing: 18) {
-            stepper(value: "\(formatWeight(set?.weight ?? 0)) kg", minus: { session.nudge(weight: -2.5) }, plus: { session.nudge(weight: 2.5) }) {
+        return VStack(spacing: 8) {
+        HStack(spacing: 18) {
+            stepper(value: "\(formatWeight(set?.weight ?? 0)) kg", minus: { session.nudge(weight: -weightStep) }, plus: { session.nudge(weight: weightStep) }) {
                 typed = formatWeight(set?.weight ?? 0); editing = .weight
             }
             stepper(value: "\(set?.reps ?? 0) rip", minus: { session.nudge(reps: -1) }, plus: { session.nudge(reps: 1) }) {
                 typed = "\(set?.reps ?? 0)"; editing = .reps
             }
+        }
+        Menu {
+            ForEach([0.5, 1, 1.25, 2, 2.5, 5, 10], id: \.self) { v in
+                Button { weightStep = v } label: {
+                    Text((weightStep == v ? "✓ " : "") + "\(formatWeight(v)) kg")
+                }
+            }
+        } label: {
+            Label("Passo \(formatWeight(weightStep)) kg · tocca il numero per scriverlo", systemImage: "scalemass")
+                .font(.caption).foregroundStyle(Theme.secondaryText)
+        }
         }
     }
 
