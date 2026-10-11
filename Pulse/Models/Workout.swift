@@ -300,6 +300,14 @@ final class WorkoutSession {
         onUpdate?()
     }
 
+    /// Typed-in values for the current set (weight in kg, reps).
+    func set(weight: Double? = nil, reps: Int? = nil) {
+        guard let c = cursor else { return }
+        if let weight { exercises[c.e].sets[c.s].weight = max(0, weight) }
+        if let reps { exercises[c.e].sets[c.s].reps = max(1, reps) }
+        onUpdate?()
+    }
+
     /// Call when the app comes back to the foreground: timers are date based, so just catch up.
     func resync() {
         if tick() { startTicker() }

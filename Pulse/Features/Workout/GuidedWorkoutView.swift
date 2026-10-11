@@ -7,6 +7,13 @@ struct GuidedWorkoutView: View {
     let session: WorkoutSession
     let onFinish: () -> Void
     @State private var showEnd = false
+    @State private var editing: Field?
+    @State private var typed = ""
+
+    private enum Field: Identifiable {
+        case weight, reps
+        var id: Self { self }
+    }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let tempo = Timer.publish(every: WorkoutSession.secondsPerRep / 2, on: .main, in: .common).autoconnect()
@@ -33,6 +40,18 @@ struct GuidedWorkoutView: View {
             withAnimation(.easeInOut(duration: WorkoutSession.secondsPerRep / 2 * 0.9)) { showEnd.toggle() }
         }
         .onChange(of: session.phase) { showEnd = false }
+        .alert(editing == .weight ? "Peso (kg)" : "Ripetizioni", isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })) {
+            TextField(editing == .weight ? "kg" : "rip", text: $typed)
+                .keyboardType(editing == .weight ? .decimalPad : .numberPad)
+            Button("Annulla", role: .cancel) {}
+            Button("OK") {
+                let n = Double(typed.replacingOccurrences(of: ",", with: "."))
+                if editing == .weight, let n { session.set(weight: n) }
+                if editing == .reps, let n { session.set(reps: Int(n)) }
+            }
+        } message: {
+            Text("Scrivi il valore a mano.")
+        }
     }
 
     // MARK: Pieces
@@ -87,15 +106,22 @@ struct GuidedWorkoutView: View {
     private var target: some View {
         let set = session.currentSet
         return HStack(spacing: 18) {
-            stepper(value: "\(formatWeight(set?.weight ?? 0)) kg", minus: { session.nudge(weight: -2.5) }, plus: { session.nudge(weight: 2.5) })
-            stepper(value: "\(set?.reps ?? 0) rip", minus: { session.nudge(reps: -1) }, plus: { session.nudge(reps: 1) })
+            stepper(value: "\(formatWeight(set?.weight ?? 0)) kg", minus: { session.nudge(weight: -2.5) }, plus: { session.nudge(weight: 2.5) }) {
+                typed = formatWeight(set?.weight ?? 0); editing = .weight
+            }
+            stepper(value: "\(set?.reps ?? 0) rip", minus: { session.nudge(reps: -1) }, plus: { session.nudge(reps: 1) }) {
+                typed = "\(set?.reps ?? 0)"; editing = .reps
+            }
         }
     }
 
-    private func stepper(value: String, minus: @escaping () -> Void, plus: @escaping () -> Void) -> some View {
+    private func stepper(value: String, minus: @escaping () -> Void, plus: @escaping () -> Void, edit: @escaping () -> Void) -> some View {
         HStack(spacing: 10) {
             Button(action: minus) { Image(systemName: "minus.circle.fill") }
-            Text(value).font(.system(.title3, design: .rounded, weight: .bold)).frame(minWidth: 70).contentTransition(.numericText())
+            Button(action: edit) {
+                Text(value).font(.system(.title3, design: .rounded, weight: .bold)).frame(minWidth: 70)
+                    .foregroundStyle(Theme.accent).contentTransition(.numericText())
+            }
             Button(action: plus) { Image(systemName: "plus.circle.fill") }
         }
         .font(.title2).foregroundStyle(Theme.secondaryText)
