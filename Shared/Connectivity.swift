@@ -80,7 +80,8 @@ final class Connectivity: NSObject, WCSessionDelegate, @unchecked Sendable {
            let snapshot = try? decoder.decode(WorkoutSnapshot.self, from: data) {
             DispatchQueue.main.async { self.onSnapshot?(snapshot) }
         }
-        if payload[WatchKey.action] != nil {
+        // Actions queued while the peer was unreachable can arrive minutes later: ignore the stale ones.
+        if let sent = payload[WatchKey.action] as? TimeInterval, Date().timeIntervalSince1970 - sent < 8 {
             DispatchQueue.main.async { self.onAction?() }
         }
         if let data = payload[WatchKey.toggle] as? Data,

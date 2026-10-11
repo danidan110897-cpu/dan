@@ -42,7 +42,7 @@ struct RestLiveActivity: Widget {
 
     private func doneButton(_ state: RestAttributes.ContentState) -> some View {
         Button(intent: CompleteSetIntent()) {
-            Label("Fatto", systemImage: "checkmark")
+            Label(state.phase == "work" ? "Fatto" : "Avanti", systemImage: state.phase == "work" ? "checkmark" : "forward.fill")
                 .font(.headline).foregroundStyle(.black)
                 .frame(maxWidth: .infinity).padding(.vertical, 8)
                 .background(lime, in: Capsule())
@@ -65,7 +65,7 @@ struct RestLiveActivity: Widget {
                     Spacer()
                     clock(state, size: 34).frame(width: 90, alignment: .trailing)
                 }
-                if state.phase == "work" { doneButton(state) }
+                doneButton(state)
             }
             .padding()
             .activityBackgroundTint(.black.opacity(0.85))
@@ -85,7 +85,7 @@ struct RestLiveActivity: Widget {
                     VStack(spacing: 6) {
                         Text(state.headline.isEmpty ? context.attributes.workoutName : state.headline)
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        if state.phase == "work" { doneButton(state) }
+                        doneButton(state)
                     }
                 }
             } compactLeading: {

@@ -93,7 +93,7 @@ struct WorkoutSessionView: View {
             link.onToggle = { s.apply($0) }
             link.activate()
             link.send(snapshot: s.snapshot)
-            LiveBridge.onDone = { [weak s] in s?.primaryAction() }
+            LiveBridge.onDone = { [weak s] in s?.advance() }
             link.onAction = { [weak s] in s?.primaryAction() }
             if link.hasWatch { Task { await HealthStore.shared.launchWatchApp() } }
             if !s.guided && s.completedSets == 0 { s.beginGuided() }

@@ -94,6 +94,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.danielioja.pulse.watchkitapp
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/PulseWatch-Extra.plist
         INFOPLIST_KEY_CFBundleDisplayName: Pulse
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.danielioja.pulse

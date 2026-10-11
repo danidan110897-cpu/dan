@@ -288,6 +288,15 @@ final class WorkoutSession {
         }
     }
 
+    /// Lock Screen and notification button: from a rest it jumps straight into the next set, because with the phone
+    /// locked the app cannot run the short "get ready" countdown by itself.
+    func advance() {
+        guard guided, phase == .rest, cursor != nil else { primaryAction(); return }
+        restRemaining = 0
+        PhaseAlerts.cancel()
+        startWork()
+    }
+
     func completeWork() {
         guard phase == .work, let c = cursor else { return }
         toggle(exerciseID: exercises[c.e].id, setID: exercises[c.e].sets[c.s].id)
@@ -343,6 +352,8 @@ final class WorkoutSession {
             endGuided(allDone: true)
         } else {
             phase = .rest
+            // The Live Activity still showed the "work" phase: refresh it now that the rest has begun.
+            updateActivity()
         }
     }
 
