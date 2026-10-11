@@ -174,7 +174,7 @@ private struct ScannerScreen: View {
     }
 }
 
-/// Type exactly what you ate: a name and the totals for the whole portion. Logged right away.
+/// Write what you ate in your own words: the AI estimates calories and macros for the whole portion, you can correct them, then add.
 private struct QuickEntryForm: View {
     let meal: Meal
     let day: Date
@@ -185,22 +185,68 @@ private struct QuickEntryForm: View {
     @State private var protein: Double?
     @State private var carbs: Double?
     @State private var fat: Double?
+    @State private var items: [FoodTextAnalyzer.Item] = []
+    @State private var note = ""
+    @State private var loading = false
+    @State private var error: String?
 
-    /// Calories as typed, or worked out from the macros when left empty.
+    /// Calories as typed or estimated, or worked out from the macros when left empty.
     private var totalKcal: Double? {
         if let kcal { return kcal }
         guard protein != nil || carbs != nil || fat != nil else { return nil }
         return (protein ?? 0) * 4 + (carbs ?? 0) * 4 + (fat ?? 0) * 9
     }
 
-    private var canAdd: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty && totalKcal != nil }
+    private var hasText: Bool { !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    private var canAdd: Bool { hasText && totalKcal != nil }
 
     var body: some View {
         Form {
-            Section("Cosa hai mangiato") {
-                TextField("Es. Pasta al pomodoro, 2 uova strapazzate", text: $name, axis: .vertical)
-                    .lineLimit(1...3)
+            Section {
+                TextField("Es. un piatto di pasta al pomodoro e 2 uova strapazzate", text: $name, axis: .vertical)
+                    .lineLimit(2...5)
+                if ClaudeClient.hasKey {
+                    Button {
+                        calculate()
+                    } label: {
+                        HStack {
+                            if loading { ProgressView() } else { Image(systemName: "sparkles") }
+                            Text(loading ? "Calcolo…" : "Calcola calorie e macro con l'AI").frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(!hasText || loading)
+                }
+            } header: {
+                Text("Cosa hai mangiato")
+            } footer: {
+                if ClaudeClient.hasKey {
+                    Text("Scrivi anche le quantità se le sai (\"150 g di riso\", \"2 uova\"). Il testo viene inviato a \(ClaudeClient.providerName) solo quando tocchi Calcola.\(ClaudeClient.privacyNote)")
+                } else {
+                    Text("Per far calcolare tutto all'AI serve una chiave (gratuita) in Impostazioni. Intanto puoi scrivere i valori qui sotto a mano.")
+                }
             }
+
+            if let error {
+                Section { Text(error).font(.footnote).foregroundStyle(Theme.move) }
+            }
+
+            if !items.isEmpty {
+                Section {
+                    ForEach(items) { item in
+                        HStack {
+                            Text(item.grams > 0 ? "\(item.name) · \(Int(item.grams)) g" : item.name).lineLimit(2)
+                            Spacer()
+                            Text("\(Int(item.kcal)) kcal").foregroundStyle(Theme.secondaryText)
+                        }
+                    }
+                    if !note.isEmpty { Text(note).font(.footnote).foregroundStyle(Theme.secondaryText) }
+                } header: {
+                    Text("Come l'ho stimato")
+                } footer: {
+                    Text("È una stima: le porzioni a parole sbagliano spesso del 15-30%. Correggi i totali qui sotto se sai di più.")
+                }
+            }
+
             Section {
                 field("Calorie (kcal)", $kcal)
                 field("Proteine (g)", $protein)
@@ -209,11 +255,12 @@ private struct QuickEntryForm: View {
             } header: {
                 Text("Totali di tutta la porzione")
             } footer: {
-                Text("Scrivi i valori di quello che hai mangiato in tutto, non per 100 g. Se lasci vuote le calorie ma metti i macro, le calcolo io (4 kcal per g di proteine e carboidrati, 9 per i grassi).")
+                Text("Puoi anche scrivere tu i valori. Se lasci vuote le calorie ma metti i macro, le calcolo io (4 kcal per g di proteine e carboidrati, 9 per i grassi).")
             }
+
             Section {
                 Button {
-                    FoodLogger.addManual(name: name.trimmingCharacters(in: .whitespaces), kcal: totalKcal ?? 0,
+                    FoodLogger.addManual(name: name.trimmingCharacters(in: .whitespacesAndNewlines), kcal: totalKcal ?? 0,
                                          protein: protein ?? 0, carbs: carbs ?? 0, fat: fat ?? 0,
                                          meal: meal, day: day, context: context)
                     onDone()
@@ -222,10 +269,35 @@ private struct QuickEntryForm: View {
                         .font(.headline).frame(maxWidth: .infinity)
                 }
                 .disabled(!canAdd)
-                .sensoryFeedback(.success, trigger: canAdd)
             }
         }
         .scrollContentBackground(.hidden)
+        .animation(Motion.snappy, value: items.count)
+    }
+
+    private func calculate() {
+        let text = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        loading = true
+        error = nil
+        Task {
+            do {
+                let result = try await FoodTextAnalyzer.analyze(text)
+                if result.items.isEmpty {
+                    items = []
+                    error = result.note.isEmpty ? "Non ho trovato cibo nel testo: prova a descrivere cosa hai mangiato." : result.note
+                } else {
+                    items = result.items
+                    note = result.note
+                    kcal = result.kcal.rounded()
+                    protein = (result.protein * 10).rounded() / 10
+                    carbs = (result.carbs * 10).rounded() / 10
+                    fat = (result.fat * 10).rounded() / 10
+                }
+            } catch {
+                self.error = error.localizedDescription + " Puoi riprovare o scrivere i valori a mano."
+            }
+            loading = false
+        }
     }
 
     private func field(_ title: String, _ value: Binding<Double?>) -> some View {
