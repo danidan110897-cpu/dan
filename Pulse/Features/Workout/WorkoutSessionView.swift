@@ -54,6 +54,9 @@ struct WorkoutSessionView: View {
         .background(Theme.background.ignoresSafeArea())
         .navigationTitle(session.title)
         .navigationBarTitleDisplayMode(.inline)
+        // Leaving with the back button or a swipe would drop the workout and leave the Live Activity and timers behind:
+        // the only exits are "Termina" (save or discard) so everything is cleaned up.
+        .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {

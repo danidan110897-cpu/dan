@@ -28,7 +28,10 @@ struct WatchWorkoutView: View {
             .animation(.snappy, value: store.isFinished)
         }
         .sensoryFeedback(.success, trigger: store.completionTick)
-        .task { await health.start() }
+        // The Health workout (heart rate, calories) runs only while the phone has a workout going; opening the app alone records nothing.
+        .onChange(of: store.hasWorkout) { _, active in
+            Task { if active { await health.start() } else { await health.finish() } }
+        }
     }
 
     private func guidedPage(_ g: GuidedState) -> some View {

@@ -22,6 +22,8 @@ final class WatchStore {
 
     var doneCount: Int { snapshot?.exercises.flatMap(\.sets).filter(\.isDone).count ?? 0 }
     var totalCount: Int { snapshot?.exercises.flatMap(\.sets).count ?? 0 }
+    /// True while the phone has a workout going; an empty snapshot means it ended.
+    var hasWorkout: Bool { snapshot?.exercises.isEmpty == false }
     var isFinished: Bool { snapshot != nil && current == nil }
 
     func start() {
