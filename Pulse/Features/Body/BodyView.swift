@@ -1,8 +1,10 @@
 import SwiftUI
+import SwiftData
 import Charts
 
 struct BodyView: View {
     @Environment(ProfileStore.self) private var store
+    @Query(sort: \WorkoutLog.date, order: .reverse) private var logs: [WorkoutLog]
     @State private var showEditor = false
     @State private var shown = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -12,6 +14,7 @@ struct BodyView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    MuscleMapView(logs: logs).entrance(0, shown: shown, reduceMotion: reduceMotion)
                     compositionCard(a).entrance(0, shown: shown, reduceMotion: reduceMotion)
                     caloriesCard(a).entrance(1, shown: shown, reduceMotion: reduceMotion)
                     macrosCard(a).entrance(2, shown: shown, reduceMotion: reduceMotion)
