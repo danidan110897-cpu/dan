@@ -222,8 +222,7 @@ final class WorkoutSession {
         restEnd = Date().addingTimeInterval(TimeInterval(seconds))
         restRemaining = seconds
         updateActivity()
-        let next = upcomingDescription
-        PhaseAlerts.schedule(title: "Recupero finito", body: next, after: seconds)
+        PhaseAlerts.schedule(title: "Recupero finito", body: upcomingDetail, after: seconds)
         startTicker()
     }
 
@@ -233,7 +232,7 @@ final class WorkoutSession {
         restTotal = max(restTotal, restRemaining)
         if restRemaining > 0 {
             updateActivity()
-            PhaseAlerts.schedule(title: "Recupero finito", body: upcomingDescription, after: restRemaining)
+            PhaseAlerts.schedule(title: "Recupero finito", body: upcomingDetail, after: restRemaining)
         } else {
             restEnded()
         }
@@ -264,6 +263,14 @@ final class WorkoutSession {
         guard let c = cursor else { return "Allenamento finito" }
         let ex = exercises[c.e]
         return "Prossima: \(ex.name), serie \(c.s + 1)/\(ex.sets.count)"
+    }
+
+    /// What the next set asks for, for notification text: "Panca, serie 2/4: 60 kg x 8".
+    var upcomingDetail: String {
+        guard let c = cursor else { return "Allenamento finito" }
+        let ex = exercises[c.e]
+        let set = ex.sets[c.s]
+        return "\(ex.name), serie \(c.s + 1)/\(ex.sets.count): \(formatWeight(set.weight)) kg × \(set.reps)"
     }
 
     func beginGuided() {
@@ -343,6 +350,9 @@ final class WorkoutSession {
         timeUp = false
         startTrigger += 1
         updateActivity()
+        if !autoComplete {
+            PhaseAlerts.schedule(title: "Tempo!", body: "Serie finita? Tocca Fatto / Avanti.", after: seconds, setEnd: true)
+        }
         startTicker()
     }
 

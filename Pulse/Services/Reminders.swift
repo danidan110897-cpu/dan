@@ -56,8 +56,8 @@ enum Reminders {
 enum PhaseAlerts {
     private static let id = "pulse.phase"
 
-    /// Switch in Settings; on by default. Only the end of a rest is announced, and only while the phone is locked or the app is closed.
-    static var enabled: Bool { UserDefaults.standard.object(forKey: "phaseAlerts") as? Bool ?? true }
+    /// Setting: 0 = no alerts, 1 = end of rest only (default), 2 = end of rest and end of set. Never shown while the app is open.
+    static var level: Int { UserDefaults.standard.object(forKey: "phaseAlertLevel") as? Int ?? 1 }
 
     static let category = "pulse.phase.actions"
     static let doneAction = "pulse.phase.done"
@@ -74,10 +74,10 @@ enum PhaseAlerts {
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
     }
 
-    static func schedule(title: String, body: String, after seconds: Int) {
+    static func schedule(title: String, body: String, after seconds: Int, setEnd: Bool = false) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [id])
-        guard seconds > 0, enabled else { return }
+        guard seconds > 0, level >= (setEnd ? 2 : 1) else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body

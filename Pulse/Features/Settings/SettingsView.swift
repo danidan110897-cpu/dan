@@ -10,7 +10,7 @@ struct SettingsView: View {
     @AppStorage("photoReminder") private var photoReminder = false
     @AppStorage("appLock") private var appLock = false
     @AppStorage("trainReminder") private var trainReminder = false
-    @AppStorage("phaseAlerts") private var phaseAlerts = true
+    @AppStorage("phaseAlertLevel") private var phaseAlertLevel = 1
     @AppStorage("liveActivity") private var liveActivity = true
     @Query private var allRoutines: [Routine]
     @State private var claudeKey = ClaudeClient.savedKey
@@ -75,12 +75,16 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Avviso a fine recupero (telefono bloccato)", isOn: $phaseAlerts)
+                    Picker("Avvisi a telefono bloccato", selection: $phaseAlertLevel) {
+                        Text("Nessuno").tag(0)
+                        Text("Fine recupero").tag(1)
+                        Text("Recupero e serie").tag(2)
+                    }
                     Toggle("Schermata di blocco durante l'allenamento", isOn: $liveActivity)
                 } header: {
                     Text("Durante l'allenamento")
                 } footer: {
-                    Text("Con l'app aperta non arriva nessuna notifica. Se ti disturbano, spegni gli avvisi: l'allenamento guidato funziona uguale.")
+                    Text("Con l'app aperta non arriva nessuna notifica. Gli avvisi compaiono anche sul Watch, con il tasto Fatto / Avanti, solo a telefono bloccato. Scegli Recupero e serie se vuoi fare tutto dal polso, Nessuno se ti disturbano.")
                 }
 
                 Section {
