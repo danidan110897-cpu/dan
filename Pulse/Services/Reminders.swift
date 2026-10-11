@@ -56,6 +56,9 @@ enum Reminders {
 enum PhaseAlerts {
     private static let id = "pulse.phase"
 
+    /// Switch in Settings; on by default. Only the end of a rest is announced, and only while the phone is locked or the app is closed.
+    static var enabled: Bool { UserDefaults.standard.object(forKey: "phaseAlerts") as? Bool ?? true }
+
     static let category = "pulse.phase.actions"
     static let doneAction = "pulse.phase.done"
 
@@ -74,12 +77,12 @@ enum PhaseAlerts {
     static func schedule(title: String, body: String, after seconds: Int) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [id])
-        guard seconds > 0 else { return }
+        guard seconds > 0, enabled else { return }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
-        content.interruptionLevel = .timeSensitive
+        content.interruptionLevel = .active
         content.categoryIdentifier = category
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(seconds), repeats: false)
         center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
@@ -87,6 +90,12 @@ enum PhaseAlerts {
 
     static func cancel() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+        clearDelivered()
+    }
+
+    /// Removes an alert that is already on the lock screen, e.g. when you come back to the app.
+    static func clearDelivered() {
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id])
     }
 }
 
@@ -100,6 +109,7 @@ final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .sound]
+        // The app is open: the screen already shows everything, so no banner or sound on top of it.
+        []
     }
 }

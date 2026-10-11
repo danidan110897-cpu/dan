@@ -21,6 +21,7 @@ struct PulseApp: App {
     init() {
         PhaseAlerts.registerCategory()
         UNUserNotificationCenter.current().delegate = NotificationRouter.shared
+        Task { @MainActor in LiveActivityManager.shared.endIfIdle() }
     }
 
     var body: some Scene {

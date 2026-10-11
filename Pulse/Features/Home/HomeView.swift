@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var showSettings = false
     @State private var active: WorkoutSession?
     @State private var pending: PendingStart?
+    @State private var resumable = SavedWorkout.summary
     @Namespace private var zoom
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -72,6 +73,15 @@ struct HomeView: View {
                     ringsCard.entrance(1, shown: shown, reduceMotion: reduceMotion)
                     readinessCard.entrance(2, shown: shown, reduceMotion: reduceMotion)
                     streakCard.entrance(3, shown: shown, reduceMotion: reduceMotion)
+                    if let resumable {
+                        ResumeCard(summary: resumable) {
+                            if let restored = WorkoutSession.restore() { active = restored }
+                        } onDiscard: {
+                            WorkoutSession.clearSaved()
+                            LiveActivityManager.shared.endIfIdle()
+                            self.resumable = nil
+                        }
+                    }
                     workoutCard.entrance(4, shown: shown, reduceMotion: reduceMotion)
                 }
                 .padding(.horizontal, 16)
@@ -83,7 +93,8 @@ struct HomeView: View {
                     .zoomDestination(id: "workout", in: zoom)
             }
             .startFlow(pending: $pending, active: $active)
-            .onAppear { shown = true }
+            .onAppear { shown = true; resumable = SavedWorkout.summary }
+            .onChange(of: active == nil) { resumable = SavedWorkout.summary }
             .task { await health.requestAndRefresh() }
             .toolbar {
                 Button("Impostazioni", systemImage: "gearshape") { showSettings = true }

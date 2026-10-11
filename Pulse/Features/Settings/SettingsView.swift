@@ -10,6 +10,8 @@ struct SettingsView: View {
     @AppStorage("photoReminder") private var photoReminder = false
     @AppStorage("appLock") private var appLock = false
     @AppStorage("trainReminder") private var trainReminder = false
+    @AppStorage("phaseAlerts") private var phaseAlerts = true
+    @AppStorage("liveActivity") private var liveActivity = true
     @Query private var allRoutines: [Routine]
     @State private var claudeKey = ClaudeClient.savedKey
     @State private var exportURL: URL?
@@ -70,6 +72,15 @@ struct SettingsView: View {
                     Text("Playlist allenamento")
                 } footer: {
                     Text("Incolla il link di una playlist (Spotify, YouTube Music o Apple Music): dal menu musica nell'allenamento si apre con un tocco. Il controllo della riproduzione dentro l'app è possibile solo con Spotify e non è ancora attivo.")
+                }
+
+                Section {
+                    Toggle("Avviso a fine recupero (telefono bloccato)", isOn: $phaseAlerts)
+                    Toggle("Schermata di blocco durante l'allenamento", isOn: $liveActivity)
+                } header: {
+                    Text("Durante l'allenamento")
+                } footer: {
+                    Text("Con l'app aperta non arriva nessuna notifica. Se ti disturbano, spegni gli avvisi: l'allenamento guidato funziona uguale.")
                 }
 
                 Section {

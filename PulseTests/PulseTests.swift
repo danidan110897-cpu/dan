@@ -235,4 +235,20 @@ struct ScheduleTests {
         #expect(chest != nil && chest!.recovery > 0.2 && chest!.recovery < 0.6)
         #expect(status[.quads]?.recovery == 1)
     }
+
+    @MainActor @Test func unfinishedWorkoutSurvivesRestart() {
+        let ex = SessionExercise(key: "bench_press", name: "Panca", muscle: .chest, equipment: .barbell,
+                                 sets: [SessionSet(weight: 60, reps: 8, previous: "—", isDone: true),
+                                        SessionSet(weight: 62.5, reps: 8, previous: "—")],
+                                 bestVolume: nil, superset: 0, hint: nil)
+        let session = WorkoutSession(title: "Push", exercises: [ex], restSeconds: 90)
+        session.persist()
+        let restored = WorkoutSession.restore()
+        #expect(restored?.title == "Push")
+        #expect(restored?.completedSets == 1)
+        #expect(restored?.totalSets == 2)
+        #expect(restored?.exercises.first?.sets.last?.weight == 62.5)
+        WorkoutSession.clearSaved()
+        #expect(WorkoutSession.restore() == nil)
+    }
 }

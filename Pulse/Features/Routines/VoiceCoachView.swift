@@ -109,7 +109,13 @@ struct VoiceCoachView: View {
                     .frame(maxWidth: .infinity).padding(.vertical, 14).background(Theme.accent, in: Capsule())
             }
             .buttonStyle(PressableStyle())
-            Text("Verrà salvato tra le tue routine e registrato nello storico come gli altri allenamenti.")
+            Button(action: { saveForLater(r) }) {
+                Label("Salva per dopo", systemImage: "tray.and.arrow.down.fill").font(.headline)
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(Theme.accent.opacity(0.18), in: Capsule())
+            }
+            .buttonStyle(PressableStyle())
+            Text("Resta tra le tue routine: puoi avviarla ora o più tardi da Allenamenti. Quando la fai viene registrata nello storico.")
                 .font(.caption).foregroundStyle(Theme.secondaryText)
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
@@ -127,7 +133,8 @@ struct VoiceCoachView: View {
         }
     }
 
-    private func start(_ r: VoiceWorkoutBuilder.Result) {
+    @discardableResult
+    private func makeRoutine(_ r: VoiceWorkoutBuilder.Result) -> Routine {
         let routine = Routine(name: r.name, restSeconds: 90)
         context.insert(routine)
         for (i, g) in r.exercises.enumerated() {
@@ -135,7 +142,18 @@ struct VoiceCoachView: View {
             routine.items.append(RoutineItem(order: i, exercise: ex, sets: g.sets, reps: g.reps))
         }
         try? context.save()
+        return routine
+    }
+
+    private func start(_ r: VoiceWorkoutBuilder.Result) {
+        let routine = makeRoutine(r)
         dismiss()
         onStart(routine)
+    }
+
+    /// Keeps the workout in the routine list so it can be started later.
+    private func saveForLater(_ r: VoiceWorkoutBuilder.Result) {
+        makeRoutine(r)
+        dismiss()
     }
 }

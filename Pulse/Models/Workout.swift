@@ -32,7 +32,9 @@ struct SessionExercise: Identifiable {
 final class WorkoutSession {
     var title: String
     var exercises: [SessionExercise]
-    let startedAt = Date()
+    var startedAt = Date()
+    /// Set when the workout was restored after the app was closed: the view restarts the guided flow where it stopped.
+    var needsResume = false
 
     var restRemaining = 0
     var restTotal: Int
@@ -341,9 +343,6 @@ final class WorkoutSession {
         timeUp = false
         startTrigger += 1
         updateActivity()
-        if !autoComplete {
-            PhaseAlerts.schedule(title: "Tempo!", body: "Finita la serie? Premi Fatto.", after: seconds)
-        }
         startTicker()
     }
 
@@ -458,4 +457,99 @@ final class WorkoutSession {
 extension WorkoutSession: Hashable {
     nonisolated static func == (lhs: WorkoutSession, rhs: WorkoutSession) -> Bool { lhs === rhs }
     nonisolated func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) }
+}
+
+
+// MARK: - Resume after the app is closed
+
+/// A workout in progress, written to disk after every change so closing the app by mistake never loses it.
+struct SavedWorkout: Codable {
+    struct Item: Codable {
+        var weight: Double
+        var reps: Int
+        var previous: String
+        var isDone: Bool
+        var isPR: Bool
+        var rir: Int?
+    }
+    struct Exercise: Codable {
+        var key: String
+        var name: String
+        var muscle: String
+        var equipment: String
+        var sets: [Item]
+        var bestVolume: Double?
+        var superset: Int
+        var hint: String?
+    }
+
+    static let storageKey = "pulse.activeWorkout.v1"
+    /// A workout left untouched this long is considered abandoned.
+    static let maxAge: TimeInterval = 12 * 3600
+
+    var title: String
+    var startedAt: Date
+    var savedAt: Date
+    var restTotal: Int
+    var guided: Bool
+    var autoComplete: Bool
+    var exercises: [Exercise]
+
+    var done: Int { exercises.flatMap(\.sets).filter(\.isDone).count }
+    var total: Int { exercises.flatMap(\.sets).count }
+
+    /// The saved workout, or nil when there is none, it is finished or it is too old.
+    static func load() -> SavedWorkout? {
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let saved = try? JSONDecoder().decode(SavedWorkout.self, from: data) else { return nil }
+        guard Date().timeIntervalSince(saved.savedAt) < maxAge, saved.total > 0, saved.done < saved.total else {
+            clear()
+            return nil
+        }
+        return saved
+    }
+
+    static func clear() { UserDefaults.standard.removeObject(forKey: storageKey) }
+
+    static var summary: (title: String, done: Int, total: Int)? {
+        load().map { ($0.title, $0.done, $0.total) }
+    }
+}
+
+extension WorkoutSession {
+    /// Writes the current state to disk. Called after every change.
+    func persist() {
+        let saved = SavedWorkout(
+            title: title, startedAt: startedAt, savedAt: Date(), restTotal: restTotal, guided: guided, autoComplete: autoComplete,
+            exercises: exercises.map { ex in
+                .init(key: ex.key, name: ex.name, muscle: ex.muscle.rawValue, equipment: ex.equipment.rawValue,
+                      sets: ex.sets.map { .init(weight: $0.weight, reps: $0.reps, previous: $0.previous, isDone: $0.isDone, isPR: $0.isPR, rir: $0.rir) },
+                      bestVolume: ex.bestVolume, superset: ex.superset, hint: ex.hint)
+            }
+        )
+        if let data = try? JSONEncoder().encode(saved) { UserDefaults.standard.set(data, forKey: SavedWorkout.storageKey) }
+    }
+
+    static func clearSaved() { SavedWorkout.clear() }
+
+    static var savedSummary: (title: String, done: Int, total: Int)? { SavedWorkout.summary }
+
+    /// Rebuilds the saved workout. The guided flow restarts from the first set not done yet.
+    static func restore() -> WorkoutSession? {
+        guard let saved = SavedWorkout.load() else { return nil }
+        let exercises = saved.exercises.map { ex in
+            SessionExercise(
+                key: ex.key, name: ex.name,
+                muscle: MuscleGroup(rawValue: ex.muscle) ?? .fullBody,
+                equipment: Equipment(rawValue: ex.equipment) ?? .bodyweight,
+                sets: ex.sets.map { SessionSet(weight: $0.weight, reps: $0.reps, previous: $0.previous, isDone: $0.isDone, isPR: $0.isPR, rir: $0.rir) },
+                bestVolume: ex.bestVolume, superset: ex.superset, hint: ex.hint
+            )
+        }
+        let session = WorkoutSession(title: saved.title, exercises: exercises, restSeconds: saved.restTotal)
+        session.startedAt = saved.startedAt
+        session.autoComplete = saved.autoComplete
+        session.needsResume = saved.guided
+        return session
+    }
 }

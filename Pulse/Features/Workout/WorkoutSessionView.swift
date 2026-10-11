@@ -92,16 +92,18 @@ struct WorkoutSessionView: View {
         .onAppear {
             let link = Connectivity.shared
             let s = session
-            s.onUpdate = { link.send(snapshot: s.snapshot) }
+            s.onUpdate = { link.send(snapshot: s.snapshot); s.persist() }
             link.onToggle = { s.apply($0) }
             link.activate()
             link.send(snapshot: s.snapshot)
             LiveBridge.onDone = { [weak s] in s?.advance() }
             link.onAction = { [weak s] in s?.primaryAction() }
             if link.hasWatch { Task { await HealthStore.shared.launchWatchApp() } }
-            if !s.guided && s.completedSets == 0 { s.beginGuided() }
+            if !s.guided && (s.completedSets == 0 || s.needsResume) { s.needsResume = false; s.beginGuided() }
+            s.persist()
+            PhaseAlerts.clearDelivered()
         }
-        .onChange(of: scenePhase) { if scenePhase == .active { session.resync() } }
+        .onChange(of: scenePhase) { if scenePhase == .active { session.resync(); PhaseAlerts.clearDelivered() } }
         .onChange(of: session.prTrigger) {
             showConfetti = false
             Task {
@@ -120,6 +122,9 @@ struct WorkoutSessionView: View {
             sets: session.completedSets,
             records: session.exercises.filter { $0.sets.contains { $0.isPR } }.map(\.name)
         )
+        // Nothing to resume once the workout is saved or discarded on purpose.
+        session.onUpdate = nil
+        WorkoutSession.clearSaved()
         session.stopGuided()
         let saved = save && session.save(to: context)
         session.skipRest()

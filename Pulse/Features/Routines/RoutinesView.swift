@@ -10,10 +10,24 @@ struct RoutinesView: View {
     @State private var pending: PendingStart?
     @State private var editing: Routine?
     @State private var showVoice = false
+    @State private var resumable = SavedWorkout.summary
 
     var body: some View {
         NavigationStack {
             List {
+                if let resumable {
+                    Section {
+                        ResumeCard(summary: resumable) {
+                            if let restored = WorkoutSession.restore() { active = restored }
+                        } onDiscard: {
+                            WorkoutSession.clearSaved()
+                            LiveActivityManager.shared.endIfIdle()
+                            self.resumable = nil
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                    }
+                }
                 Section {
                     Button { showVoice = true } label: {
                         HStack(spacing: 14) {
@@ -108,6 +122,8 @@ struct RoutinesView: View {
             }
             .navigationDestination(item: $editing) { RoutineEditor(routine: $0) }
             .navigationDestination(item: $active) { WorkoutSessionView(session: $0) }
+            .onAppear { resumable = SavedWorkout.summary }
+            .onChange(of: active == nil) { resumable = SavedWorkout.summary }
         }
         .startFlow(pending: $pending, active: $active)
         .sheet(isPresented: $showVoice) {
