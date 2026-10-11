@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 enum AppTab: Hashable {
     case today, workouts, food, progress, body
@@ -16,6 +17,11 @@ struct PulseApp: App {
     @State private var profile = ProfileStore()
     @State private var lock = AppLock()
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        PhaseAlerts.registerCategory()
+        UNUserNotificationCenter.current().delegate = NotificationRouter.shared
+    }
 
     var body: some Scene {
         WindowGroup {

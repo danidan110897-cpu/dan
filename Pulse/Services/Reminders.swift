@@ -56,7 +56,18 @@ enum Reminders {
 enum PhaseAlerts {
     private static let id = "pulse.phase"
 
+    static let category = "pulse.phase.actions"
+    static let doneAction = "pulse.phase.done"
+
+    /// Registers the "Fatto" button so it shows on the notification, including on a paired Watch.
+    static func registerCategory() {
+        let done = UNNotificationAction(identifier: doneAction, title: "Fatto / Avanti", options: [])
+        let cat = UNNotificationCategory(identifier: category, actions: [done], intentIdentifiers: [], options: [])
+        UNUserNotificationCenter.current().setNotificationCategories([cat])
+    }
+
     static func requestPermission() async {
+        registerCategory()
         _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
     }
 
@@ -69,11 +80,26 @@ enum PhaseAlerts {
         content.body = body
         content.sound = .default
         content.interruptionLevel = .timeSensitive
+        content.categoryIdentifier = category
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(seconds), repeats: false)
         center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
     }
 
     static func cancel() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+    }
+}
+
+/// Routes a tap on the notification button (phone or Watch) to the running workout.
+final class NotificationRouter: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationRouter()
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard response.actionIdentifier == PhaseAlerts.doneAction else { return }
+        await MainActor.run { LiveBridge.onDone?() }
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        [.banner, .sound]
     }
 }
