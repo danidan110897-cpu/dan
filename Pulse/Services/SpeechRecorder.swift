@@ -39,6 +39,8 @@ final class SpeechRecorder {
             request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
             self.request = request
 
+            // A tap left over from an attempt that failed halfway would make installTap throw: always start clean.
+            engine.inputNode.removeTap(onBus: 0)
             Self.installTap(on: engine.inputNode, request: request)
             engine.prepare()
             try engine.start()
@@ -60,8 +62,8 @@ final class SpeechRecorder {
     }
 
     func stop() {
-        guard isRecording || engine.isRunning else { return }
-        engine.stop()
+        // Runs even when the engine never started, so a failed start cannot leave a tap or the audio session behind.
+        if engine.isRunning { engine.stop() }
         engine.inputNode.removeTap(onBus: 0)
         request?.endAudio()
         task = nil

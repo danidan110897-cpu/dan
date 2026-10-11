@@ -217,4 +217,22 @@ struct ScheduleTests {
         #expect(week.count == 7)
         #expect(TrainingSchedule.calendar.component(.weekday, from: week[0]) == 2)
     }
+
+    @Test func painCueNeedsWholeWords() {
+        #expect(VoiceWorkoutBuilder.hasPainCue("mi fa male la spalla"))
+        #expect(VoiceWorkoutBuilder.hasPainCue("ho un dolore al ginocchio"))
+        #expect(!VoiceWorkoutBuilder.hasPainCue("oggi un allenamento normale"))
+        #expect(!VoiceWorkoutBuilder.hasPainCue("oggi mi faccio spalle e petto"))
+    }
+
+    @Test func muscleRecoveryScalesWithTime() {
+        let log = WorkoutLog(date: Date().addingTimeInterval(-24 * 3600), name: "Push", durationSeconds: 3000, volume: 1000)
+        let entry = LogEntry(exerciseKey: "bench_press", exerciseName: "Panca", muscleRaw: MuscleGroup.chest.rawValue, order: 0)
+        entry.sets = (0..<4).map { LogSet(order: $0, weight: 60, reps: 8, isPR: false) }
+        log.entries = [entry]
+        let status = MuscleRecovery.status(from: [log])
+        let chest = status[.chest]
+        #expect(chest != nil && chest!.recovery > 0.2 && chest!.recovery < 0.6)
+        #expect(status[.quads]?.recovery == 1)
+    }
 }

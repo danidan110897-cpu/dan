@@ -44,6 +44,12 @@ enum VoiceWorkoutBuilder {
         text.lowercased().folding(options: .diacriticInsensitive, locale: Locale(identifier: "it"))
     }
 
+    /// Whole words only: "normale" must not count as "male", nor "mi faccio petto" as "mi fa".
+    static func hasPainCue(_ normalized: String) -> Bool {
+        normalized.range(of: #"\b(male|dolore|dolori|doloranti|infortunio|infortunato|infortunata|fastidio|fastidi|problema|problemi|mi fa|mi fanno)\b"#,
+                         options: .regularExpression) != nil
+    }
+
     static func minutes(in text: String) -> Int {
         let t = normalize(text)
         if t.contains("mezz'ora") || t.contains("mezzora") || t.contains("mezza ora") { return 30 }
@@ -82,7 +88,7 @@ enum VoiceWorkoutBuilder {
         // Injuries only when there is a pain cue, so "alleno le spalle" never excludes shoulders.
         var request = GenerationRequest()
         request.equipment = equipment
-        if ["male", "dolore", "infortun", "fastidio", "mi fa", "problema"].contains(where: { t.contains($0) }) {
+        if hasPainCue(t) {
             request.injuries = t
             if !PlanValidator.excludedKeys(for: t).isEmpty { notes.append("Ho evitato gli esercizi più a rischio per il problema che hai detto.") }
         }
