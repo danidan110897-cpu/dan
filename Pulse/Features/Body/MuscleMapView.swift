@@ -84,7 +84,7 @@ struct MuscleMapView: View {
 
             figure(statuses)
                 .frame(maxWidth: .infinity)
-                .frame(height: 380)
+                .frame(height: 470)
 
             legend
 
@@ -123,17 +123,17 @@ struct MuscleMapView: View {
     private func figure(_ statuses: [MuscleGroup: MuscleStatus]) -> some View {
         let zones = MuscleShapes.zones(back: showBack)
         return GeometryReader { geo in
-            let s = min(geo.size.width / 100, geo.size.height / 210)
+            let s = min(geo.size.width / 100, geo.size.height / MuscleShapes.boxHeight)
             let t = CGAffineTransform(scaleX: s, y: s)
             let offsetX = (geo.size.width - 100 * s) / 2
             ZStack(alignment: .topLeading) {
-                MuscleShapes.silhouette.applying(t).fill(Color.white.opacity(0.08))
                 ForEach(zones) { zone in
                     let path = zone.path.applying(t)
-                    let status = statuses[zone.muscle]
-                    path.fill(status.map { Self.color($0) } ?? Color.white.opacity(0.1))
-                        .overlay(path.stroke(Color.white.opacity(selected == zone.muscle ? 0.95 : 0.25),
-                                             lineWidth: selected == zone.muscle ? 2 : 0.6))
+                    let status = zone.muscle.flatMap { statuses[$0] }
+                    let isSelected = zone.muscle != nil && selected == zone.muscle
+                    path.fill(status.map { Self.color($0) } ?? Color.white.opacity(0.10))
+                        .overlay(path.stroke(isSelected ? Color.white : Theme.background, lineWidth: isSelected ? 2.2 : 1.2)
+                            .shadow(color: isSelected ? .white.opacity(0.5) : .clear, radius: 4))
                 }
             }
             .offset(x: offsetX)
@@ -195,157 +195,58 @@ struct MuscleMapView: View {
     }
 }
 
-/// Hand-drawn outlines in a 100 x 210 box. Everything is drawn for the left half and mirrored.
+/// Anatomical outlines (see MuscleMapData). Each piece is a muscle, drawn with softened corners; pieces that are not
+/// one of the tracked groups (head, forearms, knees...) are drawn in a neutral colour.
 enum MuscleShapes {
     struct Zone: Identifiable {
-        let muscle: MuscleGroup
+        let id = UUID()
+        let muscle: MuscleGroup?
         let path: Path
-        var id: MuscleGroup { muscle }
     }
 
-    private static func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: x, y: y) }
+    /// Height of the drawing box (width is 100); the back view has feet, the front view stops earlier.
+    static let boxHeight: CGFloat = 222
 
-    private static func both(_ left: Path) -> Path {
-        var full = left
-        full.addPath(left.applying(CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: 100, ty: 0)))
-        return full
-    }
-
-    static let silhouette: Path = {
-        var head = Path(ellipseIn: CGRect(x: 39, y: 3, width: 22, height: 26))
-        head.addRect(CGRect(x: 44, y: 26, width: 12, height: 8))
-
-        var torso = Path()
-        torso.move(to: p(50, 30))
-        torso.addLine(to: p(44, 31))
-        torso.addQuadCurve(to: p(29, 40), control: p(34, 34))
-        torso.addQuadCurve(to: p(33, 78), control: p(30, 60))
-        torso.addQuadCurve(to: p(37, 106), control: p(36, 92))
-        torso.addQuadCurve(to: p(38, 120), control: p(36, 114))
-        torso.addLine(to: p(50, 120))
-        torso.closeSubpath()
-
-        var arm = Path()
-        arm.move(to: p(29, 40))
-        arm.addQuadCurve(to: p(19, 52), control: p(21, 42))
-        arm.addLine(to: p(16, 80))
-        arm.addQuadCurve(to: p(11, 116), control: p(14, 96))
-        arm.addLine(to: p(15, 122))
-        arm.addLine(to: p(21, 120))
-        arm.addQuadCurve(to: p(25, 84), control: p(22, 100))
-        arm.addLine(to: p(31, 60))
-        arm.closeSubpath()
-
-        var leg = Path()
-        leg.move(to: p(50, 118))
-        leg.addLine(to: p(36, 118))
-        leg.addQuadCurve(to: p(35, 160), control: p(33, 140))
-        leg.addQuadCurve(to: p(37, 192), control: p(33, 176))
-        leg.addLine(to: p(36, 204))
-        leg.addLine(to: p(46, 204))
-        leg.addLine(to: p(46, 190))
-        leg.addQuadCurve(to: p(48, 160), control: p(48, 176))
-        leg.addLine(to: p(50, 130))
-        leg.closeSubpath()
-
-        let foot = Path(ellipseIn: CGRect(x: 33, y: 203, width: 15, height: 6))
-
-        var left = Path()
-        left.addPath(torso); left.addPath(arm); left.addPath(leg); left.addPath(foot)
-        var all = both(left)
-        all.addPath(head)
-        return all
-    }()
-
-    private static let deltoid: Path = {
-        var d = Path()
-        d.move(to: p(33, 40))
-        d.addQuadCurve(to: p(25, 48), control: p(27, 40))
-        d.addQuadCurve(to: p(30, 60), control: p(24, 58))
-        d.addQuadCurve(to: p(34, 46), control: p(33, 54))
-        d.closeSubpath()
-        return d
-    }()
-
-    private static let armUpper: Path = {
-        var a = Path()
-        a.move(to: p(19, 60))
-        a.addLine(to: p(30, 60))
-        a.addLine(to: p(26, 82))
-        a.addLine(to: p(16.5, 82))
-        a.closeSubpath()
-        return a
-    }()
-
-    private static let calf: Path = {
-        var c = Path()
-        c.move(to: p(37, 166))
-        c.addQuadCurve(to: p(38, 192), control: p(33, 178))
-        c.addLine(to: p(45, 192))
-        c.addQuadCurve(to: p(46, 166), control: p(49, 178))
-        c.closeSubpath()
-        return c
-    }()
-
-    static func zones(back: Bool) -> [Zone] {
-        var out: [Zone] = []
-        func add(_ m: MuscleGroup, _ path: Path) { out.append(Zone(muscle: m, path: both(path))) }
-
-        add(.shoulders, deltoid)
-        add(back ? .triceps : .biceps, armUpper)
-        add(.calves, calf)
-
-        if back {
-            var lats = Path()
-            lats.move(to: p(49, 36))
-            lats.addQuadCurve(to: p(32, 42), control: p(40, 36))
-            lats.addQuadCurve(to: p(36, 82), control: p(31, 60))
-            lats.addQuadCurve(to: p(49, 92), control: p(42, 92))
-            lats.closeSubpath()
-            add(.back, lats)
-
-            var glutes = Path()
-            glutes.move(to: p(49, 106))
-            glutes.addQuadCurve(to: p(36, 114), control: p(38, 104))
-            glutes.addQuadCurve(to: p(44, 128), control: p(36, 126))
-            glutes.addQuadCurve(to: p(49, 120), control: p(49, 127))
-            glutes.closeSubpath()
-            add(.glutes, glutes)
-
-            var ham = Path()
-            ham.move(to: p(49, 131))
-            ham.addLine(to: p(38, 131))
-            ham.addQuadCurve(to: p(37, 162), control: p(35, 146))
-            ham.addLine(to: p(45, 162))
-            ham.addQuadCurve(to: p(49, 138), control: p(48, 150))
-            ham.closeSubpath()
-            add(.hamstrings, ham)
-        } else {
-            var chest = Path()
-            chest.move(to: p(49, 42))
-            chest.addQuadCurve(to: p(33, 44), control: p(40, 40))
-            chest.addQuadCurve(to: p(37, 60), control: p(31, 54))
-            chest.addQuadCurve(to: p(49, 58), control: p(45, 62))
-            chest.closeSubpath()
-            add(.chest, chest)
-
-            var abs = Path()
-            abs.move(to: p(49, 64))
-            abs.addLine(to: p(41, 64))
-            abs.addQuadCurve(to: p(40, 96), control: p(39, 80))
-            abs.addQuadCurve(to: p(49, 104), control: p(44, 104))
-            abs.closeSubpath()
-            add(.core, abs)
-
-            var quads = Path()
-            quads.move(to: p(49, 122))
-            quads.addLine(to: p(38, 122))
-            quads.addQuadCurve(to: p(36, 160), control: p(35, 140))
-            quads.addLine(to: p(45, 162))
-            quads.addQuadCurve(to: p(49, 130), control: p(48, 145))
-            quads.closeSubpath()
-            add(.quads, quads)
+    private static func group(for id: String) -> MuscleGroup? {
+        switch id {
+        case "CHEST": .chest
+        case "ABS", "OBLIQUES": .core
+        case "BICEPS": .biceps
+        case "TRICEPS": .triceps
+        case "FRONT_DELTOIDS", "BACK_DELTOIDS": .shoulders
+        case "QUADRICEPS": .quads
+        case "CALVES", "LEFT_SOLEUS", "RIGHT_SOLEUS": .calves
+        case "NECK", "TRAPEZIUS", "UPPER_BACK", "LOWER_BACK": .back
+        case "GLUTEAL": .glutes
+        case "HAMSTRING": .hamstrings
+        default: nil
         }
-        return out
     }
+
+    /// Polygon with every corner cut at 30 % of the adjacent edges and joined by a curve through the vertex.
+    private static func softened(_ flat: [Double], k: Double = 0.3) -> Path {
+        let pts = stride(from: 0, to: flat.count - 1, by: 2).map { CGPoint(x: flat[$0], y: flat[$0 + 1]) }
+        guard pts.count >= 3 else { return Path() }
+        func lerp(_ a: CGPoint, _ b: CGPoint, _ t: Double) -> CGPoint {
+            CGPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t)
+        }
+        var path = Path()
+        for i in pts.indices {
+            let prev = pts[(i + pts.count - 1) % pts.count], cur = pts[i], next = pts[(i + 1) % pts.count]
+            let start = lerp(cur, prev, k), end = lerp(cur, next, k)
+            if i == 0 { path.move(to: start) } else { path.addLine(to: start) }
+            path.addQuadCurve(to: end, control: cur)
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    private static func build(_ pieces: [MuscleMapData.Piece]) -> [Zone] {
+        pieces.flatMap { piece in piece.polygons.map { Zone(muscle: group(for: piece.id), path: softened($0)) } }
+    }
+
+    private static let frontZones = build(MuscleMapData.front)
+    private static let backZones = build(MuscleMapData.back)
+
+    static func zones(back: Bool) -> [Zone] { back ? backZones : frontZones }
 }
