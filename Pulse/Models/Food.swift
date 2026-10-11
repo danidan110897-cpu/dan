@@ -141,6 +141,19 @@ enum FoodLogger {
         return entry
     }
 
+    /// Logs exactly what the user typed (totals for what was eaten), without a per-100 g food behind it.
+    @MainActor
+    @discardableResult
+    static func addManual(name: String, kcal: Double, protein: Double, carbs: Double, fat: Double,
+                          meal: Meal, day: Date, context: ModelContext) -> FoodEntry {
+        let date = Calendar.current.isDateInToday(day) ? Date() : (Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: day) ?? day)
+        let entry = FoodEntry(date: date, meal: meal, name: name, grams: 0, kcal: kcal, protein: protein, carbs: carbs, fat: fat, itemKey: "manual")
+        context.insert(entry)
+        try? context.save()
+        pushToHealth(entry)
+        return entry
+    }
+
     @MainActor
     static func pushToHealth(_ e: FoodEntry) {
         let (id, date, kcal, p, c, f) = (e.uid, e.date, e.kcal, e.protein, e.carbs, e.fat)

@@ -155,7 +155,7 @@ private struct FoodDayView: View {
                     Button { editing = entry } label: {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(entry.name).font(.subheadline).lineLimit(1).foregroundStyle(.white)
-                            Text("\(formatWeight(entry.grams)) g · P \(Int(entry.protein)) C \(Int(entry.carbs)) G \(Int(entry.fat))")
+                            Text("\(entry.grams > 0 ? formatWeight(entry.grams) + " g · " : "")P \(Int(entry.protein)) C \(Int(entry.carbs)) G \(Int(entry.fat))")
                                 .font(.caption).foregroundStyle(Theme.secondaryText)
                         }
                     }
@@ -225,7 +225,7 @@ private struct EntryEditor: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Annulla") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Salva") {
-                        guard grams > 0, entry.grams > 0 else { return }
+                        guard grams > 0, entry.grams > 0 else { dismiss(); return }
                         let ratio = grams / entry.grams
                         entry.kcal *= ratio
                         entry.protein *= ratio

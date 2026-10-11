@@ -6,7 +6,7 @@ struct AddFoodSheet: View {
     let day: Date
 
     enum Mode: String, CaseIterable, Identifiable {
-        case search = "Cerca", recent = "Recenti", favorites = "Preferiti", manual = "Nuovo"
+        case search = "Cerca", write = "Scrivi", recent = "Recenti", favorites = "Preferiti", manual = "Nuovo"
         var id: String { rawValue }
     }
 
@@ -35,6 +35,7 @@ struct AddFoodSheet: View {
 
                 switch mode {
                 case .search: searchList
+                case .write: QuickEntryForm(meal: meal, day: day) { dismiss() }
                 case .recent: foodList(items.filter { $0.lastUsed != nil }.prefix(40).map(FoodResult.init(item:)),
                                        empty: "Qui compariranno gli alimenti che registri.")
                 case .favorites: foodList(items.filter(\.isFavorite).map(FoodResult.init(item:)),
@@ -169,6 +170,70 @@ private struct ScannerScreen: View {
             .navigationTitle("Codice a barre")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Chiudi") { dismiss() } } }
+        }
+    }
+}
+
+/// Type exactly what you ate: a name and the totals for the whole portion. Logged right away.
+private struct QuickEntryForm: View {
+    let meal: Meal
+    let day: Date
+    let onDone: () -> Void
+    @Environment(\.modelContext) private var context
+    @State private var name = ""
+    @State private var kcal: Double?
+    @State private var protein: Double?
+    @State private var carbs: Double?
+    @State private var fat: Double?
+
+    /// Calories as typed, or worked out from the macros when left empty.
+    private var totalKcal: Double? {
+        if let kcal { return kcal }
+        guard protein != nil || carbs != nil || fat != nil else { return nil }
+        return (protein ?? 0) * 4 + (carbs ?? 0) * 4 + (fat ?? 0) * 9
+    }
+
+    private var canAdd: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty && totalKcal != nil }
+
+    var body: some View {
+        Form {
+            Section("Cosa hai mangiato") {
+                TextField("Es. Pasta al pomodoro, 2 uova strapazzate", text: $name, axis: .vertical)
+                    .lineLimit(1...3)
+            }
+            Section {
+                field("Calorie (kcal)", $kcal)
+                field("Proteine (g)", $protein)
+                field("Carboidrati (g)", $carbs)
+                field("Grassi (g)", $fat)
+            } header: {
+                Text("Totali di tutta la porzione")
+            } footer: {
+                Text("Scrivi i valori di quello che hai mangiato in tutto, non per 100 g. Se lasci vuote le calorie ma metti i macro, le calcolo io (4 kcal per g di proteine e carboidrati, 9 per i grassi).")
+            }
+            Section {
+                Button {
+                    FoodLogger.addManual(name: name.trimmingCharacters(in: .whitespaces), kcal: totalKcal ?? 0,
+                                         protein: protein ?? 0, carbs: carbs ?? 0, fat: fat ?? 0,
+                                         meal: meal, day: day, context: context)
+                    onDone()
+                } label: {
+                    Text(totalKcal.map { "Aggiungi a \(meal.label) · \(Int($0)) kcal" } ?? "Aggiungi a \(meal.label)")
+                        .font(.headline).frame(maxWidth: .infinity)
+                }
+                .disabled(!canAdd)
+                .sensoryFeedback(.success, trigger: canAdd)
+            }
+        }
+        .scrollContentBackground(.hidden)
+    }
+
+    private func field(_ title: String, _ value: Binding<Double?>) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            TextField("0", value: value, format: .number).keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing).frame(width: 90)
         }
     }
 }
