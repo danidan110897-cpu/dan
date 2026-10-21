@@ -216,27 +216,28 @@ def crop_marks(c, w, h):
             c.line(x0 * mm, y * mm, x1 * mm, y * mm)
 
 
-def front(c):
-    w, h = 85, 55
+def front(c, w=85):
+    h, d = 55, w - 85  # d = larghezza extra rispetto al biglietto da visita
     k = Card(c, w, h)
-    k.streamer([(70, 11), (80, 12), (84, 20), (82, 30), (80, 40), (82, 46), (82, 49)], 1.2)
-    k.bow(68, 9, 0.55, 8)
+    k.streamer([(70 + d, 11), (80 + d, 12), (84 + d, 20), (82 + d, 30), (80 + d, 40), (82 + d, 46), (82 + d, 49)], 1.2)
+    k.bow(68 + d, 9, 0.55, 8)
     k.corner_cluster("bl", 1.0, seed=1)
-    for i, (x, f) in enumerate([(26, "pink"), (33, "light"), (40, "peony"), (48, "pink"), (55, "deep"),
-                                (62, "peony"), (70, "pink")]):
+    xs = [26, 33, 40, 48, 55, 62, 70]
+    for i, (x, f) in enumerate(zip(xs, ["pink", "light", "peony", "pink", "deep", "peony", "pink"])):
+        x = 26 + (x - 26) * (44 + d) / 44
         k.leaf(x, h - 2, 5, 40 * i); k.flower(x, h - 2.6, 3.0 + (i % 3) * 0.5, f, seed=20 + i)
-    k.butterfly(77, 44, 0.9, -20)
-    k.fit("YLLEN BEAUTY", 41.5, 20.5, "Title", 54, INK, "c")
-    k.fit("Beauty & Care", 41.5, 27.5, "Script", 31, PINK, "c")
-    k.divider(41.5, 33.5, 11)
-    s = "COSMETICĂ  ♥  EPILAT  ♥  MASAJ  ♥  TRATAMENTE FACIALE"
-    # il cuore dentro al testo e' disegnato a mano: spezzo la riga in 4 voci
+    k.butterfly(77 + d, 44, 0.9, -20)
+    cx = 41.5 + d / 2
+    k.fit("YLLEN BEAUTY", cx, 20.5, "Title", 54, INK, "c")
+    k.fit("Beauty & Care", cx, 27.5, "Script", 31, PINK, "c")
+    k.divider(cx, 33.5, 11)
+    # il cuore tra le voci e' disegnato a mano: spezzo la riga in 4 voci
     items = ["COSMETICĂ", "EPILAT", "MASAJ", "TRATAMENTE FACIALE"]
     f, sz, sp = "Serif", 5.8, 0.7
     ws = [pdfmetrics.stringWidth(t, f, sz) / mm + sp * (len(t) - 1) / mm for t in items]
     gap = 4.4
     total = sum(ws) + gap * 3
-    x = 42.5 - total / 2
+    x = cx + 1 - total / 2
     for i, t in enumerate(items):
         k.text(t, x, 37.8, f, sz, INK, "l", sp)
         x += ws[i]
@@ -328,6 +329,6 @@ def abbonamento(c):
 if __name__ == "__main__":
     cv = canvas.Canvas(OUT)
     cv.setTitle("Yllen Beauty - biglietto e abbonamento")
-    front(cv); back(cv, URL); abbonamento(cv)
+    front(cv); back(cv, URL); abbonamento(cv); front(cv, 98)
     cv.save()
     print("scritto", OUT, "| QR ->", URL)
