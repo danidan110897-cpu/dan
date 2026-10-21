@@ -2,7 +2,7 @@
 """PDF fronte/retro costruito dalle immagini originali del mockup (source/mockup.webp).
 
 Pagine: 1 fronte biglietto, 2 retro biglietto (QR sostituito con uno vero), 3 fronte abbonamento,
-4 retro abbonamento (= logo del fronte biglietto).
+4 retro abbonamento (= logo del fronte biglietto, ritagliato).
 Uso: python3 make_pdf_from_mockup.py "https://URL-NOTINO" [output.pdf]
 """
 import io
@@ -33,10 +33,10 @@ bg = tuple(int(v) for v in np.median(np.asarray(c2.crop((415, 140, 421, 230))).r
 c2p = c2.copy()
 c2p.paste(bg, (416, 128, 534, 241))
 
-# retro abbonamento: logo del fronte biglietto portato al formato 2:1 (taglio lieve sopra/sotto + stiramento ~9%)
+# retro abbonamento: stesso logo, ritagliato al formato 2:1 senza alcuna deformazione
 w, h = c1.size
-ch = round(w / 1.83); t = (h - ch) // 2 + 4
-c4 = c1.crop((0, t, w, t + ch)).resize(c3.size, Image.LANCZOS)
+ch = round(w * c3.height / c3.width)
+c4 = c1.crop((0, 20, w, 20 + ch)).resize(c3.size, Image.LANCZOS)
 
 
 def page(c, img, wmm, qr=False):
